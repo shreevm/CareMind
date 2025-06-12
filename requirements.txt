@@ -5,7 +5,6 @@ gradio
 langchain
 sentence-transformers
 huggingface_hub
-accelerate
 scikit-learn
 tqdm
 python-dotenv
