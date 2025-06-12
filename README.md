@@ -57,12 +57,3 @@ python caremind_agent.py
 ```
 
 
-## Deployment
-
-To deploy on Hugging Face Spaces:
-1. Create a new Space (Gradio + GPU)
-2. Upload all files
-3. Set `PINECONE_API_KEY`,`SERP_API_KEY` in Secrets
-4. Click **Run**
-
-You're now ready to deploy this to Hugging Face Spaces! Just include `requirements.txt`, `caremind_agent.py`, and the rest of the files in your repo. Spaces will auto-launch your Gradio interface.
