@@ -50,10 +50,11 @@ pip install -r requirements.txt
 ```
 PINECONE_API_KEY=your_key
 SERPAPI_API_KEY=your_key
+HF_TOKEN=your_key
 ```
 3. Launch the app:
 ```bash
-python caremind_agent.py
+python agentic_qa.py
 ```
 
 
