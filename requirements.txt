@@ -8,3 +8,4 @@ huggingface_hub
 scikit-learn
 tqdm
 python-dotenv
+redis
