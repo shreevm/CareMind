@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CareMind</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="sidebar">
+        <div>
+          <p class="eyebrow">CareMind</p>
+          <h1>Medical document RAG workspace</h1>
+        </div>
+
+        <div class="toolbar">
+          <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
+        </div>
+
+        <form id="upload-form" class="upload-box">
+          <label for="file">Upload PDF or text</label>
+          <div class="file-control">
+            <input id="file" name="file" type="file" accept=".pdf,.txt,.md,text/plain,application/pdf" />
+            <button type="submit">Upload</button>
+          </div>
+        </form>
+
+        <div id="status" class="status" role="status">Ready.</div>
+
+        <button id="seed-demo" class="secondary">Seed demo reports</button>
+
+        <div class="panel">
+          <div class="panel-title">Documents</div>
+          <div id="documents" class="documents"></div>
+        </div>
+
+        <button id="compare" class="secondary">Compare selected</button>
+      </section>
+
+      <section class="chat">
+        <div id="messages" class="messages" aria-live="polite">
+          <div class="message assistant">
+            Upload a synthetic medical report or seed the demo, then ask what changed, what the key findings are, or which evidence supports a statement.
+          </div>
+        </div>
+        <form id="chat-form" class="composer">
+          <input id="message" autocomplete="off" placeholder="Ask about the uploaded reports..." />
+          <button type="submit">Send</button>
+        </form>
+      </section>
+    </main>
+
+    <script src="/static/main.js"></script>
+  </body>
+</html>

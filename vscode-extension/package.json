@@ -1,0 +1,51 @@
+{
+  "name": "caremind-vscode",
+  "displayName": "CareMind",
+  "description": "VS Code sidebar for the CareMind medical document RAG assistant.",
+  "version": "0.4.0",
+  "publisher": "caremind",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["*", "onView:caremind.chatView"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "CareMind",
+      "properties": {
+        "caremind.apiBaseUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:8000",
+          "description": "CareMind backend API URL."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "caremind",
+          "title": "CareMind",
+          "icon": "./media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "caremind": [
+        {
+          "id": "caremind.chatView",
+          "name": "Chat"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.4.5"
+  }
+}

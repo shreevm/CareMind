@@ -1,0 +1,16 @@
+Synthetic cardiology report.
+
+Visit reason: intermittent chest discomfort and shortness of breath.
+
+Findings:
+Troponin is negative.
+ECG shows normal sinus rhythm.
+Chest x-ray shows no acute cardiopulmonary abnormality.
+Blood pressure is 138/84 mmHg.
+
+Assessment:
+The report does not document evidence of acute myocardial infarction.
+
+Plan:
+Outpatient cardiology follow-up is documented.
+Return precautions are documented for worsening chest pain, fainting, or severe shortness of breath.

@@ -1,0 +1,17 @@
+Synthetic discharge summary.
+
+Admission reason:
+Patient was admitted for community-acquired pneumonia with fever, cough, and shortness of breath.
+
+Hospital course:
+Chest imaging showed right lower lobe opacity.
+White blood cell count was elevated on admission and improved before discharge.
+The patient received ceftriaxone and azithromycin during the hospital stay.
+Oxygen requirement resolved before discharge.
+
+Discharge condition:
+Stable on room air.
+
+Follow-up:
+Primary care follow-up is recommended within one week.
+Repeat chest imaging is suggested if symptoms persist.

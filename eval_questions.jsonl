@@ -1,0 +1,5 @@
+{"question":"is this caremind?","expected_route":"direct","requires_citation":false}
+{"question":"What are the key findings?","expected_route":"retrieve","requires_citation":true}
+{"question":"What changed between reports?","expected_route":"compare","requires_citation":true}
+{"question":"Explain pneumonia symptoms in simple language.","expected_route":"medical_education","requires_citation":true}
+{"question":"What is hypertension?","expected_route":"medical_education","requires_citation":true}
