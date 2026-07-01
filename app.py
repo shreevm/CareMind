@@ -22,6 +22,7 @@ from caremind.tools import DocumentTools
 from caremind.vectorstore import VectorStore
 
 
+
 security = HTTPBasic(auto_error=False)
 
 

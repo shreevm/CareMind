@@ -1,702 +1,570 @@
-# CareMind MVP Specs
-Version: 0.4
-Status: Viable MVP with deployment and evaluation pipeline
+# CareMind Specs
+Version: 0.6
+Status: MVP + Observability/Eval Loop + Guardrails + Multimodal Clinical Agent
+
+This is the full consolidated spec. It supersedes v0.4 and v0.5; nothing from those is dropped. This document is additive and complete on its own.
 
 ## 1. Product Summary
-CareMind is a lightweight Slack-first agentic RAG assistant for medical and research documents with two user surfaces:
-- Slack agent/app for chat, report Q&A, report comparison, and workflow notifications.
-- Web app for document upload, demo chat, admin review, metrics, and evaluation dashboards.
 
-The MVP helps users upload medical PDFs or text files, ask questions, compare reports, and receive evidence-grounded answers with citations. It is designed for medical research, education, and document interpretation, not autonomous diagnosis.
+CareMind is an agentic, multimodal RAG assistant for medical and research documents, images, and voice, with two user interfaces:
+- Web chat app.
+- VS Code sidebar extension.
 
-The product has two answer modes:
-- **Document-grounded mode**: answers from uploaded reports and cites uploaded passages.
-- **General medical education mode**: answers from a small trusted education corpus and cites the education passage. It is non-diagnostic and does not replace clinician advice.
+Users upload medical PDFs, text files, clinical images (e.g. chest X-rays), or speak into the app, ask questions, compare reports, and receive evidence-grounded answers with citations. It is designed for medical research, education, clinical document interpretation, and nursing/clinical-knowledge support — not autonomous diagnosis and not emergency triage.
 
-## 2. MVP Goal
-Ship a usable product in one week that demonstrates:
-- agentic planning,
+Answer modes:
+- Document-grounded mode: answers from uploaded reports, cites uploaded passages.
+- General medical education mode: answers from a trusted education corpus (MedCorp), cites the passage. Non-diagnostic.
+- Clinical knowledge QA mode: answers general medical/nursing knowledge questions grounded in MedCorp (PubMed, StatPearls, textbooks), benchmarked against MIRAGE.
+- Imaging mode: accepts an uploaded clinical image (chest X-ray initially), returns a grounded description tied to retrieved similar reports, via a vision-capable model.
+- Report comparison mode: diffs two documents and summarizes clinically relevant changes.
+- Voice input mode: transcribes spoken questions into text and routes them through the same agent stack as typed input.
+
+All modes carry a non-diagnostic disclaimer and route away from anything resembling emergency symptoms or dosage requests (see Section 10, emergency_redirect).
+
+## 2. Goal
+
+Ship a system that demonstrates:
+- agentic planning and routing across multiple clinical knowledge domains,
 - LangGraph-based workflow orchestration,
-- retrieval-augmented generation,
+- multimodal retrieval-augmented generation (text, imaging, and voice-transcribed text),
 - MCP-based tool use,
 - evidence citations,
-- Slack agent experience with a supporting web dashboard,
-- Slack hackathon alignment through MCP integration and agentic workflow automation,
-- no GPU cost (NVIDIA free endpoints),
-- synthetic medical datasets.
+- shared web + VS Code experience,
+- closed-loop evaluation (loop engineering) against a real benchmark (MIRAGE),
+- guardrails appropriate for real, credentialed clinical data (MIMIC),
+- no GPU cost for LLM/embedding inference (NVIDIA free endpoints) except where a vision model requires local/hosted inference.
 
 ## 3. Target Users
+
 - Medical students.
 - Researchers.
-- Clinicians reviewing documents.
+- Clinicians and nurses reviewing documents or images.
 - Health-tech demo evaluators.
 - AI/ML recruiter reviewers.
-- Slack workspace users who need cited answers from trusted medical/research documents.
 
 ## 4. Core Use Case
-User uploads one or more medical documents and asks:
+
+User uploads one or more medical documents or images, or speaks a question, and asks:
 - What are the key findings?
 - What changed between reports?
 - Explain this in simple language.
 - What evidence supports this statement?
 - Explain pneumonia, anemia, hypertension, diabetes, or chest pain in simple educational language.
+- What does this chest X-ray show, grounded in similar reported cases?
+- General nursing/clinical-knowledge questions such as standard care protocols, medication classes, and lab value interpretation at an educational level.
 
-The system retrieves relevant passages, reasons over them, and returns a cited response.
-
-In the Slack experience, users can ask CareMind questions in a channel or direct message, trigger report comparison, receive citation-backed summaries, and get safety-aware educational responses without leaving Slack.
+The system routes the query, retrieves relevant passages or images, reasons over them, and returns a cited response.
 
 ## 5. Datasets
 
-### 5.1 For Development & Demo
-Use **synthetic or open datasets** to avoid PHI and compliance issues:
+### 5.1 Text corpora
 
-- **PDF Deid Dataset** (JohnSnowLabs/pdf-deid-dataset)
-  - Fully synthetic medical-style PDF documents.
-  - Easy, Medium, Hard levels.
-  - Ideal for OCR, de-identification testing, and document ingestion.
-  - No real patient data. [web:168]
+| Purpose | Dataset | Access | Notes |
+|---|---|---|---|
+| Primary demo (synthetic, no credentialing) | PDF Deid Dataset (JohnSnowLabs/pdf-deid-dataset) | Open | Synthetic PDFs, Easy/Medium/Hard, ideal for ingestion/OCR testing |
+| Primary demo (synthetic, no credentialing) | Synthetic Australian Medical Documents Sample | Open, CC-BY-NC 4.0 | 50 docs, 29 types, includes scanned variants |
+| Document-grounded QA (real data) | MIMIC-IV-Note | PhysioNet credentialed | Discharge summaries and radiology report text; powers document-grounded mode on real clinical notes |
+| Clinical knowledge QA / benchmarking corpus | MedCorp (PubMed + StatPearls + Textbooks + Wikipedia, via MedRAG toolkit) | Open | Backing corpus for medical_knowledge_qa route and MIRAGE benchmarking |
+| Evaluation only (not a RAG corpus) | MIRAGE (MedQA, MedMCQA, PubMedQA, BioASQ, MMLU-Med) | Open | Used to score the agent, not to answer from |
 
-- **Synthetic Australian Medical Documents Sample** (RootCauseAnalytics/synthetic-australian-medical-documents-sample)
-  - 50-document sample of synthetic NSW Health-style PDFs.
-  - 29 document types.
-  - PHI-free, CC-BY-NC 4.0.
-  - Includes scanned variants for OCR robustness. [web:170]
+### 5.2 Imaging corpora
 
-- **Medical Lab Report Dataset** (Kaggle)
-  - Medical report images.
-  - Good for OCR, NLP, and extraction testing. [web:172][web:181]
+| Purpose | Dataset | Access | Notes |
+|---|---|---|---|
+| Chest X-ray + report grounding | MIMIC-CXR | PhysioNet credentialed | Images paired with real radiology reports; primary imaging dataset |
+| Broader modality coverage | ROCOv2 | Open, no credentialing | Captions are shorter/less structured than MIMIC reports; treat as secondary corpus |
 
-- **Medical RAG Corpus** (Sagarika-Singh-99/medical-rag-corpus on Hugging Face)
-  - 216,102 medical document samples.
-  - Preprocessed for RAG pipelines.
-  - Includes BM25 tokens and dense embeddings. [web:157]
+MIMIC-IV itself has no images and is not directly ingested by the RAG pipeline; MIMIC-IV-Note and MIMIC-CXR are the text/image components actually used.
 
-- **PubMed Corpus** (MedRAG/pubmed on Hugging Face)
-  - 23.9M PubMed snippets (titles + abstracts).
-  - Ready for medical RAG. [web:160]
+### 5.3 Data handling note
 
-### 5.2 For MVP Demo
-For the MVP, you should:
-- Use PDF Deid or Synthetic Australian documents as your **primary demo dataset**.
-- Add a few classic medical Q&A datasets (e.g., MedQA, PubMedQA) for evaluation.
-- Avoid real PHI in demos.
+MIMIC-IV, MIMIC-IV-Note, and MIMIC-CXR are real, de-identified patient data under a PhysioNet Data Use Agreement, not synthetic. This changes the project's security posture from "defense in depth for a hypothetical" to load-bearing.
 
 ## 6. Models
 
-### 6.1 LLM (NVIDIA Free Endpoint)
-Use NVIDIA’s free NIM endpoints at `https://integrate.api.nvidia.com/v1`.
+### 6.1 LLM (NVIDIA free endpoint, text)
+
+base_url = https://integrate.api.nvidia.com/v1
 
 Recommended models:
-- **`meta/llama-3.1-8b-instruct`** — Llama-family NVIDIA-hosted option, good for a recruiter-friendly demo.
-- **`deepseek-ai/deepseek-v4-flash`** — strong for most RAG scenarios. [web:174]
-- **`nvidia/nemotron-3-ultra-500b`** — extreme long-context, agentic reasoning. [web:174]
-- **`nvidia/nemotron-4-340b-instruct`** — good general instruction-following.
-- **`meta/llama-3.1-8b-instruct`** or **`mistralai/mistral-7b-instruct`** — smaller, fast options.
+- meta/llama-3.1-8b-instruct — default for MVP, recruiter-friendly demo.
+- deepseek-ai/deepseek-v4-flash — strong general RAG option.
+- nvidia/nemotron-3-ultra-500b — long-context, agentic reasoning.
+- nvidia/nemotron-4-340b-instruct — general instruction-following.
 
-For MVP, use:
-```python
-model = "meta/llama-3.1-8b-instruct"
-base_url = "https://integrate.api.nvidia.com/v1"
-```
+### 6.2 Embedding model
 
-### 6.2 Embedding Model
-Use NVIDIA embedding models via their API:
+- nvolveqa_40k — default for MVP.
+- NV-EmbedQA-E5-v5 — QA-retrieval optimized alternative.
+- NV-Embed-v2 — generalist, high MTEB rank.
 
-- **`nvolveqa_40k`** — GPU-accelerated question-answer retrieval embedding. [web:167][web:176]
-- **`NV-EmbedQA-E5-v5`** — optimized for text QA retrieval. [web:179]
-- **`NV-Embed-v2`** — generalist embedding, ranks No. 1 on MTEB. [web:182]
+### 6.3 Vision-language model (imaging mode)
 
-For MVP, use:
-```python
-model = "nvolveqa_40k"
-```
+Two candidates; verify current versions/availability before committing:
+- MedGemma — trained specifically on medical imaging, chest-X-ray heavy; closer domain fit for MIMIC-CXR.
+- Qwen2-VL — general-purpose vision-language, strong OCR/general image understanding, not medically fine-tuned.
 
-Implementation note:
-- The current MVP calls NVIDIA's OpenAI-compatible HTTP endpoints directly through `httpx`.
-- LangGraph is used for agent workflow orchestration.
-- LangChain wrappers are optional and can be added later if the project needs a larger integration ecosystem.
+Default: MedGemma for chest X-ray description; fall back to Qwen2-VL for other modalities where no medically tuned option is in scope.
 
-### 6.3 Optional Reranker
-Optional:
-- Use NVIDIA’s rerank models if available.
-- Or use a simple similarity-based rerank in your pipeline.
+### 6.4 Router model
+
+A small model or LoRA-tuned classifier dedicated to route prediction, separate from the generation LLM. This keeps routing latency and cost low and makes routing behavior independently evaluable.
+
+### 6.5 Optional reranker
+
+NVIDIA rerank model if available, or simple similarity-based rerank.
 
 ## 7. Scope
 
-### In Scope
+### In scope
 - Web chat interface.
-- Slack agent/app interface for direct messages, app mentions, document Q&A, and report comparison.
-- Web admin/demo interface for upload, seeded demos, metrics, and evaluation dashboards.
-- PDF and text upload.
-- Synthetic medical PDFs (PDF Deid, Synthetic Australian).
+- VS Code sidebar interface.
+- PDF, text, image, and voice upload/input.
+- Synthetic demo datasets for keyless/no-credential demos.
+- Real clinical datasets for the credentialed deployment path.
 - Chunking and embedding with NVIDIA.
 - Vector retrieval with Pinecone.
-- Agentic query routing.
-- MCP-style tools for document search, report comparison, timeline extraction, and medical education search.
+- Agentic query routing across an expanded route taxonomy.
+- MCP tools: document search, report comparison, timeline extraction, medical education search, imaging search.
 - Citation-backed answers.
-- Conversation history and session state with Redis.
-- Redis response cache for repeated retrieval, comparison, and education questions.
-- Basic document-level memory.
-- Basic evaluation and monitoring endpoints.
-- Performance evaluation dashboard for offline eval runs and quality trends.
-- Simple safety checks.
-- NVIDIA free endpoint for LLM and embeddings.
+- Conversation history and session state in Redis.
+- Exact-match and semantic response caching in Redis.
+- LangSmith tracing of every agent run.
+- Prometheus metrics, Grafana-compatible.
+- Eval harness with baseline diffing against MIRAGE and internal test sets.
+- Prompt-injection and medical-safety guardrails.
+- LoRA-tuned router for route classification.
+- NVIDIA free endpoints for text LLM/embeddings; vision model per Section 6.3.
+- Speech-to-text preprocessing for voice input.
+- Optional text-to-speech output.
 
-### Out of Scope
-- Full PHI compliance program.
+### Out of scope
+- Full PHI compliance certification.
 - EHR/FHIR integration.
 - DICOM support.
-- Multi-agent orchestration.
-- Voice.
+- Multi-agent orchestration beyond the single router + tool-call pattern.
+- Voice-first real-time speech-to-speech as the primary architecture.
 - Mobile app.
-- VS Code extension as a required MVP surface.
-- Fine-tuning.
-- Real-time clinical decision automation.
+- Fine-tuning of the generation LLM.
+- Real-time clinical decision automation or emergency triage.
 - Complex user roles.
-- Paid GPU or enterprise inference.
+- Paid GPU or enterprise inference beyond what's needed for the vision model.
 
 ## 8. Functional Requirements
 
 ### FR-1 Authentication
-The product shall support basic login for private workspace access (MVP can use simple auth or no auth with local sessions).
+Basic login for private workspace access. MVP may use simple auth or no-auth local sessions.
 
-### FR-2 Document Upload
-Users shall upload PDF and text files through the web app. Slack users may attach documents or reference already-uploaded demo documents when Slack file ingestion is enabled.
+### FR-2 Document, Image, and Voice Upload
+Users shall upload PDF, text, and image files through web and VS Code, and may submit voice input through the web app.
 
 ### FR-3 Document Processing
-The system shall extract text, split it into chunks, and index it for retrieval.
+Extract text, split into chunks, and index for retrieval. For images: store alongside extracted metadata such as modality and associated report if present. For voice: transcribe to text and store transcript metadata.
 
 ### FR-4 Agentic Query Routing
-The assistant shall decide whether to:
-- answer directly,
-- retrieve from documents,
-- call an MCP tool,
-- answer from the medical education corpus,
-- ask a clarification question.
+The router shall classify each query into one of the routes defined in Section 10.1, including a mandatory emergency_redirect path.
 
 ### FR-5 Retrieval
-The system shall retrieve top relevant chunks from uploaded documents before generating answers when needed. Vector search is done via Pinecone with NVIDIA embeddings.
+Retrieve top relevant chunks (text) or nearest report matches (imaging) before generating answers. Vector search shall use Pinecone with NVIDIA embeddings.
 
-Local development may use SQLite-backed local vector search. Production/demo-with-keys uses Pinecone by setting:
-```env
-CAREMIND_VECTOR_BACKEND=pinecone
-PINECONE_API_KEY=...
-PINECONE_INDEX_NAME=caremind-index
-```
+Local dev may use SQLite-backed local vector search.
 
 ### FR-6 MCP Tool Use
-The system shall expose at least one MCP tool such as:
-- report comparison,
-- document search,
-- timeline extraction.
-- medical education search.
-
-MCP tools are implemented as a separate server that the backend agent can call.
+Exposed MCP tools: document search, report comparison, timeline extraction, medical education search, imaging search. Implemented as a separate server the backend agent calls.
 
 ### FR-7 Answer Generation
-The system shall generate concise, clinically grounded answers using retrieved evidence and the NVIDIA LLM endpoint.
+Generate concise, evidence-grounded answers using retrieved text and/or image context via the NVIDIA LLM endpoint or vision model.
 
 ### FR-8 Citations
-Every factual answer shall include citations to document passages or retrieved evidence.
+Every factual answer shall include citations to document passages, retrieved evidence, or the source report tied to an imaging match.
 
 ### FR-9 Memory
-The system shall store:
-- uploaded files,
-- extracted document text,
-- conversation history,
-- basic document summaries.
-
-Session and cache state are stored in Redis.
-
-If Redis is unavailable, the MVP falls back to SQLite chat history and disables Redis response cache.
+Store uploaded files, extracted text, conversation history, document summaries. Session and cache state in Redis. If Redis is unavailable, fall back to SQLite chat history and disable response caching.
 
 ### FR-10 Safety Checks
-The system shall:
-- avoid claiming diagnosis,
-- flag uncertainty,
-- refuse unsupported medical advice,
-- warn that the output is for educational use.
+Avoid diagnostic claims, flag uncertainty, refuse unsupported medical advice, warn output is for educational use, and hard-redirect anything resembling an emergency or dosage request.
 
 ### FR-11 Evaluation
-The system shall include a repeatable evaluation script that measures:
-- route accuracy,
-- citation pass rate,
-- average latency,
-- basic endpoint health.
+Repeatable evaluation script measuring route accuracy, citation pass rate, average latency, endpoint health, and MIRAGE-benchmarked accuracy for the clinical knowledge route.
 
 ### FR-12 Monitoring
-The system shall expose a metrics endpoint containing:
-- request counts,
-- agent route counts,
-- tool call counts,
-- cache hit/miss counts,
-- average and max latency by route/path.
+/metrics in Prometheus format exposing request counts, route counts, tool call counts, cache hit/miss, and latency by route.
 
-### FR-13 Slack Agent Interface
-The system shall expose a Slack app/agent that supports:
-- direct messages and app mentions,
-- asking questions over uploaded or seeded documents,
-- report comparison requests,
-- general medical education questions,
-- citation-backed responses in Slack messages,
-- safety notes and non-diagnostic disclaimers,
-- optional buttons or shortcuts for seed demo, compare reports, and open dashboard.
+### FR-13 Semantic Cache
+Redis semantic cache check using cosine similarity above a threshold before retrieval/generation, scoped per workspace/document set, in addition to exact-match cache.
 
-### FR-14 Hackathon Submission Readiness
-The MVP shall be prepared for the Slack Agent Builder Challenge by demonstrating at least one qualifying Slack technology path:
-- MCP server integration for document search, report comparison, timeline extraction, and medical education tools.
-- Slack agent workflow automation for question routing, retrieval, and response generation.
-- Optional Real-Time Search API integration only if time permits.
+### FR-14 Tracing
+LangSmith tracing of every agent run: router decision, retrieval results, tool calls, generation prompts, guardrail outcomes.
 
-The target hackathon track is **Slack Agent for Good**, with **New Slack Agent** as the backup track.
+### FR-15 Prometheus Metrics
+/metrics in Prometheus exposition format: requests, latency, cache hit/miss, tool calls, errors.
 
-## 9. User Flows
+### FR-16 Eval Harness with Baseline Diffing
+Persist each eval run, diff against last passing baseline, report PASS/WARN/FAIL per metric with configurable thresholds.
+
+### FR-17 Prompt Injection Guardrail
+Screen uploaded documents/images and queries for injection patterns; treat all retrieved/document content as untrusted data, never instructions.
+
+### FR-18 Medical Safety Guardrail
+Screen outputs for diagnostic-sounding claims, enforce non-diagnostic disclaimers, flag low-confidence answers, hard-block emergency/dosage requests.
+
+### FR-19 Guardrail Evaluation
+Maintain an adversarial test set; report guardrail pass rate as a first-class eval metric subject to baseline diffing.
+
+### FR-20 Multimodal Ingestion
+Accept clinical images, extract modality metadata, and embed/index for retrieval alongside paired reports where available or captions where not.
+
+### FR-21 Imaging QA
+Given an uploaded image and a question, retrieve the nearest matching reports/captions and generate a grounded description via the vision-language model, with citations to the retrieved source.
+
+### FR-22 Router Classification Quality
+The router shall be evaluated and tuned as an independent component, with route accuracy tracked separately from downstream answer quality.
+
+### FR-23 MIRAGE Benchmarking
+The evaluation harness shall support running the agent against MIRAGE's five sub-datasets and reporting per-dataset and aggregate accuracy.
+
+### FR-24 Voice Input
+The system shall accept voice input in the web app and transcribe it before routing.
+
+### FR-25 Voice Transcription Metadata
+Voice transcripts shall carry metadata such as transcript text, confidence, language, timestamps, and input modality.
+
+### FR-26 Optional TTS Output
+The system may optionally read final answers aloud using text-to-speech.
+
+## 9. Architecture
+
+User (Web/VSCode) → FastAPI backend → input guardrail → router → Redis cache check → route-specific retrieval/tool/model path → output guardrail → response + metrics + cache
+
+Offline:
+- evaluate.py → internal test set + MIRAGE → scoring
+- baseline diff → PASS/WARN/FAIL
+- Prometheus Pushgateway → Grafana dashboard
+- LangSmith trace links on failing examples
+
+Router training:
+- labeled route examples → LoRA fine-tune → router model → route accuracy eval
+
+Storage & infrastructure:
+- Pinecone: vector DB for text chunks and image-report embeddings, metadata-filtered by workspace/document.
+- Redis: session state, exact-match cache, semantic cache, conversation memory.
+- PostgreSQL/SQLite: metadata, user data, chat history.
+- Object storage: local disk (demo) or S3-compatible cloud storage.
+
+Voice pipeline:
+- audio input → speech-to-text → normalized transcript → same backend agent path as text.
+
+## 10. Routing Taxonomy and Agent Behavior
+
+### 10.1 Routes
+
+| Route | Purpose | Backing source |
+|---|---|---|
+| clinical_document_qa | Questions about an uploaded document | MIMIC-IV-Note or synthetic uploads |
+| medical_knowledge_qa | General medical/clinical knowledge questions | MedCorp, benchmarked via MIRAGE |
+| imaging_qa | Questions about an uploaded image | MIMIC-CXR (X-ray), ROCOv2 (other modalities) |
+| report_comparison | Diff between two uploaded reports | MCP comparison tool |
+| nursing_care_qa | Nursing-scope clinical knowledge | MedCorp subset, curated |
+| emergency_redirect | Anything resembling emergency symptoms or dosage requests | Hard-coded refusal + redirect to professional/emergency care, no generation |
+| clarify | Ambiguous query | Clarification prompt back to user |
+
+### 10.2 Emergency redirect is non-negotiable
+emergency_redirect bypasses generation entirely. It is not a prompt-level instruction to the LLM to "be careful"; it's a separate code path triggered before generation.
+
+### 10.3 LoRA-tuned router
+Build a labeled dataset of 200-500+ examples across all seven routes. LoRA fine-tune a small base model dedicated to route classification, kept separate from the generation LLM. Do not LoRA fine-tune the generation model on medical text by default; RAG grounding is preferred over parametric fine-tuning for factual claims.
+
+## 11. Security & Guardrails
+
+### 11.1 Prompt injection defense
+Retrieved chunks and uploaded documents/images are treated as untrusted data; the system prompt explicitly instructs the model never to follow instructions found inside them. Retrieved content is delimiter-isolated in the prompt. Pre-check screens uploads/queries for injection patterns. Output-side check verifies no system-prompt leakage and no deviation from scope.
+
+### 11.2 Medical safety guardrails
+No diagnostic claims. Mandatory non-diagnostic disclaimer on every clinically relevant answer. Uncertainty flagging when retrieval confidence or citation coverage is low. Hard refusal + redirect for emergency_redirect.
+
+### 11.3 Real PHI posture
+Comply with the PhysioNet Data Use Agreement: no re-identification attempts, no data leaving the controlled environment, access logging enabled. No sensitive content in logs. Redis TTLs enforced on all cached content, including semantic cache entries. Pinecone entries scoped per workspace with metadata filtering. Synthetic datasets remain the default for public/keyless demos; MIMIC-backed mode is a separate, access-gated deployment path.
+
+### 11.4 Guardrail test set
+Adversarial eval set: direct injection attempts, jailbreak prompts embedded in uploaded documents, diagnostic-request edge cases, off-topic scope-creep, and simulated emergency-symptom queries to confirm emergency_redirect fires. Guardrail pass rate is tracked in the eval harness.
+
+## 12. Loop Engineering (Eval Loop)
+
+### 12.1 The problem it solves
+Running an eval script once produces a number with nothing to compare it to, nothing to decide if it's a regression, and nothing to trigger action.
+
+### 12.2 The loop
+1. RUN → evaluate.py produces metrics.
+2. COMPARE → diff current metrics against the last saved baseline.
+3. DECIDE → flag PASS/WARN/FAIL per metric against a threshold.
+4. ACT → surface FAIL in dashboard/CI/alert.
+5. UPDATE → on PASS, current run becomes the new baseline.
+
+### 12.3 Implementation
+evaluate.py writes results to eval_runs/<timestamp>.json and to eval_runs/baseline.json on PASS. Comparison step loads baseline.json, computes per-metric deltas, applies thresholds. Results are pushed to Prometheus Pushgateway for Grafana trend lines. Optional GitHub Action runs the harness on PRs touching prompts/chunking/retrieval/routing code.
+
+### 12.4 Testing "with loop" vs "without loop"
+Fixed labeled test set plus MIRAGE for the knowledge route. Without loop: compare numbers manually. With loop: diff is programmatic and produces a PASS/FAIL table automatically.
+
+## 13. Semantic Response Caching (Redis)
+
+Embed each query with the same NVIDIA embedding model used for retrieval. Check Redis for a cached entry whose stored question-embedding has cosine similarity above threshold (default 0.92) to the incoming query, scoped to the same workspace/document set. Hit: return cached answer + citations, mark cache_hit=semantic, skip retrieval and generation. Miss: run full pipeline and store question, embedding, answer, citations, route, doc_ids. Exact-match cache is checked first. Invalidate on document re-upload/deletion. Fallback: if Redis or the vector index is unavailable, disable semantic cache, fall back to exact-match only.
+
+## 14. LangSmith Tracing
+
+Trace per run: router decision, retrieval step, MCP tool calls, generation step, guardrail step, total and per-node latency. Wrap the LangGraph invocation with LangSmith tracing. Tag traces with workspace_id, route, cache_hit. Failing eval examples link directly to traces.
+
+## 15. Prometheus Metrics
+
+- caremind_requests_total{route, status}
+- caremind_latency_seconds{route}
+- caremind_cache_hit_total{type="exact"|"semantic"} / caremind_cache_miss_total
+- caremind_tool_calls_total{tool_name}
+- caremind_errors_total{stage}
+- caremind_eval_route_accuracy
+- caremind_eval_citation_pass_rate
+- caremind_eval_faithfulness
+- caremind_eval_mirage_accuracy
+
+Use prometheus_client to register metrics and expose /metrics. Grafana panels should show request rate by route, p50/p95 latency, cache hit rate over time, and eval metric trend lines with pass/warn/fail bands.
+
+## 16. Eval Harness
+
+### 16.1 Scoring dimensions
+- Answer correctness.
+- Relevance.
+- Groundedness/faithfulness.
+- Retrieval relevance.
+- Route accuracy.
+- Citation pass rate.
+- Guardrail pass rate.
+- MIRAGE accuracy.
+
+### 16.2 Scoring method
+Correctness/relevance/groundedness via LLM-as-judge against labeled data. Retrieval relevance, route accuracy, citation pass rate computed directly from agent output. MIRAGE scored using its standard zero-shot question-only retrieval protocol.
+
+### 16.3 Output
+eval_runs/<timestamp>.json and eval_runs/baseline.json. Failing examples link to LangSmith traces.
+
+## 17. User Flows
 
 ### Flow A: Ask a Question
-1. User uploads a medical PDF (e.g., PDF Deid).
-2. User asks a question.
-3. Agent decides retrieval is needed.
-4. Retrieval finds relevant chunks in Pinecone.
-5. LLM (via NVIDIA endpoint) answers with citations.
-6. Response is shown in Slack and the web chat.
-7. Session and cache are stored in Redis.
+Upload → route to clinical_document_qa or medical_knowledge_qa → retrieve from Pinecone → LLM answers with citations → shown in web/VS Code → session/cache in Redis.
 
 ### Flow B: Compare Reports
-1. User uploads two reports.
-2. User asks what changed.
-3. MCP tool or comparison logic identifies differences.
-4. Agent summarizes changes with citations.
+Upload two reports → route to report_comparison → MCP comparison tool identifies differences → agent summarizes with citations.
 
-### Flow C: Continue Across Slack and Web
-1. User starts in Slack by asking CareMind a question in a direct message or app mention.
-2. User opens the web dashboard to upload documents, inspect citations, or view evaluation metrics.
-3. Same workspace and history are available via shared backend and Redis.
-4. User continues the conversation in Slack or the web app.
+### Flow C: Continue Across Interfaces
+Start in web chat → open VS Code extension → same workspace/history via shared backend and Redis.
 
-### Flow D: General Medical Education
-1. User asks a general education question such as "What is hypertension?"
-2. Agent routes to `medical_education`.
-3. Medical education search retrieves trusted built-in education passages.
-4. LLM produces a concise educational answer with citations.
-5. Safety layer adds the educational/non-diagnostic disclaimer.
+### Flow D: General Medical/Nursing Education
+Ask a question → route to medical_knowledge_qa or nursing_care_qa → retrieve from MedCorp → answer with citations → safety layer adds disclaimer.
 
-### Flow E: Cached Repeat Question
-1. User asks a previously answered retrieval, comparison, or education question.
-2. Agent checks Redis response cache.
-3. If a cache hit exists, the cached answer is returned quickly.
-4. Metrics records cache hit and route latency.
+### Flow E: Cached Repeat or Similar Question
+Ask a previously answered or semantically similar question → Redis exact or semantic cache hit → cached answer returned quickly → metrics record cache hit and latency.
 
-### Flow F: Slack Hackathon Demo
-1. User opens the CareMind Slack agent in a sandbox workspace.
-2. User asks CareMind to seed synthetic medical reports or references a preloaded demo workspace.
-3. User asks "What are the key findings?"
-4. CareMind routes the question, retrieves evidence, calls MCP-style document search, and posts a cited answer.
-5. User asks "What changed between reports?"
-6. CareMind calls the report comparison tool and posts a cited summary.
-7. User opens the web dashboard from Slack to show metrics, route distribution, cache state, and evaluation results.
+### Flow F: Imaging Question
+Upload a chest X-ray → route to imaging_qa → nearest report match retrieved from MIMIC-CXR or ROCOv2 caption → vision model generates grounded description with citation → safety layer adds disclaimer.
 
-## 10. Architecture
+### Flow G: Emergency Symptom or Dosage Request
+Query resembles an emergency or dosage request → router fires emergency_redirect → generation is bypassed → user receives a refusal and redirect.
 
-### Frontend
-- Web app with chat and upload (Next.js or React).
-- Slack app/agent for workspace chat, direct messages, app mentions, and workflow actions.
-- Web dashboard for document upload, demo chat, metrics, and evaluation results.
+### Flow H: Injection Attempt
+Uploaded document or query contains an injection pattern → input guardrail flags it → request is blocked or routed to a stricter mode.
 
-### Backend
-- FastAPI service for chat, upload, retrieval, and memory.
-- Slack adapter service for events, commands, interactive actions, and response formatting.
-- LangGraph agent planner (agentic RAG).
-- RAG pipeline using Pinecone + NVIDIA embeddings.
-- MCP server for tools.
-- Safety layer for grounding and policy checks.
-- Metrics layer for route/tool/cache/request observability.
-- Evaluation script for repeatable smoke-quality checks.
+### Flow I: Voice Question
+User speaks into the microphone → speech-to-text produces a transcript → transcript is routed through the same agent path as typed text → answer is returned with citations.
 
-### Storage & Infrastructure
-- **Pinecone**: vector database for document embeddings and retrieval.
-- **Redis**: cache, session state, and conversation memory.
-- **PostgreSQL/SQLite**: metadata, user data, and chat history.
-- **Object storage**: local file storage or S3 for uploaded documents.
+## 18. Tech Stack
 
-### Models
-- **LLM**: NVIDIA free endpoint (e.g., `deepseek-ai/deepseek-v4-flash`).
-- **Embedding**: NVIDIA endpoint (`nvolveqa_40k` or `NV-EmbedQA-E5-v5`).
-- **Optional reranker**: NVIDIA rerank or simple similarity.
+- Frontend web: Next.js/React, Tailwind, streaming chat UI.
+- Frontend VS Code: TypeScript, VS Code extension API, WebView sidebar.
+- Backend: FastAPI, LangGraph StateGraph, Pydantic, uvicorn.
+- Agent graph nodes: input guardrail, route, check cache, direct response, document retrieval, imaging retrieval, report comparison, medical/nursing education retrieval, clarification, output guardrail, finalization.
+- RAG & retrieval: NVIDIA embeddings, Pinecone, local SQLite fallback, simple recursive-ish text splitter.
+- Vector DB: Pinecone with metadata filtering by document/workspace ID.
+- Cache & session: Redis.
+- Database: SQLite or PostgreSQL.
+- MCP: Python or TypeScript MCP server.
+- LLM inference: NVIDIA free endpoint.
+- Vision inference: MedGemma primary, Qwen2-VL fallback.
+- Voice: speech-to-text and optional text-to-speech.
+- Tracing: LangSmith.
+- Metrics: prometheus_client, Grafana.
+- Router fine-tuning: LoRA on a small base model.
+- Deployment: Docker; Render/Cloudflare/Fly.io/simple VM.
+- Evaluation: python evaluate.py with internal test set + MIRAGE.
 
-## 11. Tech Stack
+## 19. Non-Functional Requirements
 
-### Frontend (Web)
-- Next.js or React.
-- Tailwind CSS for UI.
-- Fetch/axios for API calls.
-- Streaming chat UI.
-- Admin/demo dashboard for documents, metrics, and evaluation reports.
+- MVP runs locally or on a simple cloud host.
+- MIMIC-backed mode requires a controlled, access-logged environment.
+- Responses stream where possible.
+- Indexing completes in under a minute for small documents.
+- UI is simple and responsive.
+- System is easy to demo.
+- Clear separation between keyless synthetic-data demo and credentialed MIMIC-backed deployment.
+- Stack avoids GPU costs for text inference during prototyping.
 
-### Slack App / Agent
-- Slack app for direct messages, app mentions, commands, and interactive buttons.
-- Slack Bolt for Python or Slack SDK integration with the FastAPI backend.
-- Slack message formatting with citations, safety notes, and dashboard links.
-- Slack developer sandbox for hackathon judging and demo access.
+## 20. Environment Variables
 
-### Backend
-- FastAPI (Python).
-- LangGraph `StateGraph` for agent routing and workflow orchestration.
-- Pydantic for data validation.
-- uvicorn for server.
+```env
+# NVIDIA
+NVIDIA_API_KEY=...
+NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
+NVIDIA_CHAT_MODEL=meta/llama-3.1-8b-instruct
+NVIDIA_EMBEDDING_MODEL=nvolveqa_40k
 
-### Agent Graph
-- LangGraph workflow:
-  - route,
-  - check cache,
-  - direct response,
-  - document retrieval,
-  - report comparison,
-  - medical education retrieval,
-  - clarification,
-  - safety/finalization.
+# Vision model
+CAREMIND_VISION_MODEL=medgemma
+CAREMIND_VISION_ENDPOINT=...
 
-### RAG & Retrieval
-- Custom RAG pipeline using NVIDIA embeddings, Pinecone, and local SQLite fallback.
-- Chunking: simple recursive-ish text splitter.
-- NVIDIA embeddings via direct HTTP calls to the NVIDIA endpoint.
+# Pinecone
+PINECONE_API_KEY=...
+PINECONE_INDEX_NAME=caremind-index
+CAREMIND_VECTOR_BACKEND=pinecone
 
-### Vector DB
-- **Pinecone**:
-  - Cloud-hosted.
-  - Index for document chunks.
-  - Metadata filtering by document ID.
+# Redis
+REDIS_URL=redis://localhost:6379/0
+CAREMIND_SEMANTIC_CACHE_ENABLED=true
+CAREMIND_SEMANTIC_CACHE_THRESHOLD=0.92
+CAREMIND_CACHE_TTL_SECONDS=86400
 
-### Cache & Session
-- **Redis**:
-  - Conversation sessions.
-  - Query cache.
-  - Temporary agent state.
+# Auth
+CAREMIND_USERNAME=...
+CAREMIND_PASSWORD=...
 
-### Database
-- **SQLite** (MVP) or **PostgreSQL**.
-- Stores:
-  - user data,
-  - workspace metadata,
-  - chat history,
-  - document metadata.
+# LangSmith
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=...
+LANGCHAIN_PROJECT=caremind-dev
 
-### MCP
-- Python or TypeScript MCP server.
-- Tools:
-  - document search,
-  - report comparison,
-  - timeline extraction.
-  - medical education search.
+# Prometheus
+CAREMIND_PROMETHEUS_PUSHGATEWAY_URL=http://localhost:9091
 
-### LLM Inference
-- NVIDIA free endpoint:
-  - base_url: `https://integrate.api.nvidia.com/v1`
-  - models:
-    - `deepseek-ai/deepseek-v4-flash`
-    - `nvidia/nemotron-4-340b-instruct`
-    - `meta/llama-3.1-8b-instruct`
+# Eval / loop engineering
+CAREMIND_EVAL_FAIL_THRESHOLD=0.05
+CAREMIND_EVAL_WARN_THRESHOLD=0.02
+CAREMIND_EVAL_BASELINE_PATH=eval_runs/baseline.json
 
-### Embeddings
-- NVIDIA endpoint:
-  - `nvolveqa_40k` or `NV-EmbedQA-E5-v5` via direct HTTP calls.
-- Local fallback:
-  - deterministic hashing embeddings for keyless demos.
+# Guardrails
+CAREMIND_GUARDRAILS_ENABLED=true
 
-### Deployment
-- Docker for containerization.
-- Optional:
-  - Render,
-  - Hugging Face Spaces with Docker,
-  - Cloudflare,
-  - Fly.io,
-  - Azure Container Apps,
-  - or simple VM.
-- Slack app configured with production callback URLs and environment secrets.
+# MIMIC access
+PHYSIONET_CREDENTIALED=true
+CAREMIND_DATA_MODE=synthetic
+```
 
-### Evaluation & Testing
-- `python evaluate.py` runs a local seeded evaluation.
-- Metrics:
-  - route accuracy,
-  - citation pass rate,
-  - average latency,
-  - endpoint success/failure.
-- Smoke checks:
-  - `/health`,
-  - `/demo/seed`,
-  - `/chat`,
-  - `/compare`,
-  - `/metrics`.
+## 21. Security Baseline
 
-### Monitoring
-- `/metrics` exposes JSON metrics for MVP demos.
-- Production can scrape or forward these metrics to Grafana/Prometheus, hosted logging platforms, or cloud provider monitoring.
-- Minimum monitored signals:
-  - request count by status,
-  - latency by endpoint,
-  - route distribution,
-  - tool-call distribution,
-  - Redis cache hit/miss,
-  - citation pass rate from scheduled evaluation.
-
-## 12. Non-Functional Requirements
-- MVP should run locally or on a simple cloud host.
-- Responses should stream where possible.
-- Indexing should complete in under a minute for small documents.
-- The UI should be simple and responsive.
-- The system should be easy to demo.
-- The stack should avoid GPU costs during prototyping.
-
-## 13. Security Baseline
-- Use HTTPS in deployment.
-- Encrypt stored files if possible.
+- HTTPS in deployment.
+- Encrypt stored files where possible.
 - Keep dev and prod data separate.
 - Do not store unnecessary identifiers.
 - Do not log sensitive content.
-- Use synthetic or de-identified medical documents for the MVP demo.
+- Synthetic/de-identified documents for the public demo path; MIMIC data only in the credentialed, access-logged deployment path.
 - Basic auth for workspace access.
 - Session and cache state in Redis with sensible TTLs.
-- Never commit `.env` or API keys.
-- Rotate any key that is accidentally shared.
+- Never commit .env or API keys.
+- PhysioNet Data Use Agreement compliance for all MIMIC-derived data.
 
-## 14. Success Criteria
-The MVP is successful if:
-- a user can upload a document,
-- ask a question,
-- get a cited answer,
-- compare two reports,
-- use CareMind from Slack through direct messages or app mentions,
-- continue the same workspace across Slack and the web dashboard,
-- demonstrate MCP-based tool use,
-- meet Slack hackathon requirements through MCP integration or Slack agent workflow automation,
-- use NVIDIA free endpoints for inference and embeddings,
-- demonstrate a general medical education route,
-- show Redis cache state when Redis is configured,
-- show Pinecone vector retrieval when `CAREMIND_VECTOR_BACKEND=pinecone`,
-- run evaluation with route accuracy and citation pass-rate metrics,
-- view runtime metrics from `/metrics`,
-- view performance evaluation results in the dashboard.
+## 22. Success Criteria
 
-## 15. Demo Script
-Demo should show:
-1. Open the CareMind Slack agent in the hackathon sandbox workspace.
-2. Seed or upload synthetic medical reports through the web app.
-3. In Slack, ask "What are the key findings?"
-4. Show a cited answer posted back into Slack.
-5. In Slack, ask "What changed between reports?"
-6. Show the report comparison response and cite the source documents.
-7. Show one MCP-style tool call in the backend logs, metrics, or dashboard.
-8. Ask "What is hypertension?" to show general medical education RAG.
-9. Open the web dashboard from Slack to show route, latency, cache, and tool metrics.
-10. Run `python evaluate.py` and show the evaluation dashboard output.
-11. Mention that the LLM and embeddings use NVIDIA free endpoints.
+The system is successful if:
+- a user can upload a document, ask a question, and get a cited answer,
+- a user can upload a chest X-ray and get a grounded, cited description,
+- a user can compare two reports,
+- a user can continue the session in both web and VS Code,
+- MCP-based tool use is demonstrated,
+- NVIDIA free endpoints are used for text inference/embeddings,
+- a general medical education and a nursing-scope question both route and answer correctly,
+- voice input is accepted and routed through the same agent stack,
+- Redis cache state is visible when Redis is configured,
+- Pinecone vector retrieval is visible when CAREMIND_VECTOR_BACKEND=pinecone,
+- a full agent run is inspectable end-to-end in LangSmith,
+- /metrics is scrapeable by Prometheus and renders in Grafana,
+- running evaluate.py twice with an intentional regression produces a visible PASS/FAIL diff,
+- the medical_knowledge_qa route can be scored against MIRAGE and reported per sub-dataset,
+- the router's route accuracy is independently reported and improved via LoRA fine-tuning,
+- an injection attempt embedded in an uploaded document/image is neutralized,
+- a diagnostic-sounding or emergency-sounding query is redirected,
+- guardrail pass rate is visible in the eval report.
 
-## 16. Future Extensions
-- PHI-aware secure mode.
-- FHIR integration.
+## 23. Demo Script
+
+- Upload a synthetic medical PDF, ask a question, show cited answer.
+- Ask a paraphrased version of the same question, show semantic cache hit.
+- Upload a chest X-ray, ask what it shows, show grounded description with citation to a matched report.
+- Compare two reports.
+- Open the VS Code extension, continue the same conversation.
+- Show one MCP tool call in action.
+- Ask a general medical education question and a nursing-scope question, show both route correctly.
+- Use voice input to ask a question and show the transcript routed through the same agent.
+- Open LangSmith, show the trace for a prior query.
+- Open Grafana, show request/latency/cache panels.
+- Run python evaluate.py, show baseline saved, including a MIRAGE sub-dataset score.
+- Make a deliberate regression, run evaluate.py again, show FAIL diff table.
+- Upload a document containing an injection attempt, show it neutralized.
+- Ask an emergency-symptom or dosage-style question, show emergency_redirect firing.
+- Show guardrail pass rate and router route-accuracy in the eval report.
+
+## 24. Voice Input
+
+CareMind shall support voice input as an optional modality in the web app and, later, in the VS Code extension.
+
+### 24.1 Voice Input Behavior
+- Users may speak into the microphone to ask questions.
+- The system shall transcribe voice to text before routing.
+- The transcribed text shall be treated the same as typed text for agent routing, retrieval, citations, and safety checks.
+- Voice input shall carry metadata such as transcription confidence, language, timestamps, and input modality.
+
+### 24.2 Voice Processing Pipeline
+- Audio input is captured in the frontend.
+- Speech-to-text converts audio into a transcript.
+- The transcript is normalized and sent to the backend agent.
+- The backend agent routes the query through the existing CareMind workflow.
+- Optional text-to-speech may render the final answer aloud.
+
+### 24.3 Agent Integration
+- Voice input shall not create a separate reasoning stack.
+- The same router, retrieval, tool use, safety, and citation pipeline shall handle both text and voice.
+- The agent may use transcript confidence to decide whether clarification is needed.
+- Low-confidence transcription may trigger a clarification response.
+
+### 24.4 Implementation Notes
+- The MVP may use a chained architecture: STT -> agent -> optional TTS.
+- Live speech-to-speech realtime models are out of scope for the first release unless they are required for a demo.
+- Voice support shall remain optional so the core text/document workflow stays the primary build path.
+
+## 25. Future Extensions
+
+- PHI-aware secure mode as a full compliance program.
+- FHIR/EHR integration.
 - DICOM support.
-- VS Code extension for developer/research workflows.
 - Longitudinal patient timelines.
 - Medical term simplification.
 - Lab trend graphs.
 - Multi-document reasoning.
 - Audit logging.
 - SSO and enterprise auth.
-- Paid inference or private LLM deployment.
+- Paid inference or private LLM/vision-model deployment.
+- Expanded imaging modalities with a dedicated report-paired dataset.
 
-## 17. Similar Projects
-Similar projects exist in parts:
-- Slack AI agents and workflow bots.
-- Slack Marketplace apps for knowledge search and team automation.
-- VS Code RAG extensions (e.g. Knowledge RAG, StackRAG).
-- MCP-enabled VS Code agents.
-- Medical agentic RAG systems (e.g., MED-COPILOT-style work).
-- Agentic RAG chatbots over PDFs and docs.
+## 26. Why This Is Worth Building
 
-The competitive edge is combining:
-- Slack + web dashboard,
-- agentic RAG,
-- MCP tool use,
-- citation-backed answers,
-- a medical/research domain,
-- performance evaluation visibility for demo and regression tracking.
+This demonstrates agentic orchestration across multiple knowledge domains, multimodal RAG engineering, tool use, closed-loop evaluation against a real benchmark, targeted fine-tuning, production observability, and guardrail design appropriate for real clinical data.
 
-## 18. Is It Worth Building
-Yes, it is worth building for AI/ML engineer jobs because it shows:
-- agentic orchestration,
-- RAG engineering,
-- tool use (MCP),
-- Slack app + frontend + backend integration,
-- product thinking,
-- deployment on a cloud stack without GPU costs.
+## 27. Reality Check on Scope
 
-## 19. One-Week Reality Check
-This is feasible in one week only if you stay strict about scope:
-- one document workflow,
-- one primary Slack chat experience,
-- one supporting web dashboard,
-- one comparison tool,
-- one shared backend,
-- no compliance-heavy features.
+This is a significant expansion from a one-week synthetic-only MVP. Recommended sequencing:
+1. Guardrails.
+2. Expanded router + LoRA tuning.
+3. Eval harness with baseline diffing.
+4. MIMIC-IV-Note document QA.
+5. LangSmith tracing.
+6. MIMIC-CXR imaging mode.
+7. MIRAGE benchmarking.
+8. Prometheus/Grafana.
 
-With NVIDIA free endpoints, Pinecone, and Redis, the stack is clean and cost-effective for prototyping.
-
-## 20. End-to-End Pipeline
-
-### 20.1 Local Keyless Demo
-1. Install dependencies with `pip install -r requirements.txt`.
-2. Start the API with `python app.py`.
-3. Open `http://127.0.0.1:8000`.
-4. Upload sample reports or click seed demo.
-5. Ask document questions and compare reports.
-6. Ask a general education question such as "What is pneumonia?"
-7. Inspect `/metrics` and the evaluation dashboard.
-8. Run `python evaluate.py`.
-
-Optional local Slack demo:
-1. Start the API with a public tunnel URL.
-2. Configure the Slack app event, command, and interactivity URLs to point at the tunnel.
-3. Install the Slack app into a developer sandbox workspace.
-4. Ask CareMind questions in Slack while the backend handles retrieval and tool calls.
-
-### 20.2 API-Key Production Demo
-Configure:
-```env
-NVIDIA_API_KEY=...
-NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
-NVIDIA_CHAT_MODEL=meta/llama-3.1-8b-instruct
-NVIDIA_EMBEDDING_MODEL=nvolveqa_40k
-
-PINECONE_API_KEY=...
-PINECONE_INDEX_NAME=caremind-index
-CAREMIND_VECTOR_BACKEND=pinecone
-
-REDIS_URL=redis://localhost:6379/0
-CAREMIND_USERNAME=...
-CAREMIND_PASSWORD=...
-
-SLACK_BOT_TOKEN=...
-SLACK_SIGNING_SECRET=...
-SLACK_APP_TOKEN=...
-CAREMIND_PUBLIC_BASE_URL=https://your-caremind-demo.example.com
-```
-
-Pipeline:
-1. Upload document.
-2. Extract text from PDF/text.
-3. Chunk text.
-4. Embed chunks using NVIDIA embeddings.
-5. Upsert vectors into Pinecone with workspace/document metadata.
-6. Store metadata and chat history in SQLite/PostgreSQL.
-7. Cache session and repeat responses in Redis.
-8. Agent routes each query to direct, document RAG, report comparison, medical education, or clarification.
-9. LLM generates grounded answer.
-10. Safety layer adds uncertainty and education disclaimer.
-11. API returns answer, route, tool calls, citations, and safety notes.
-12. Slack adapter formats the response for direct messages, app mentions, or interactive actions.
-13. Metrics records latency, tool calls, route counts, request counts, and cache hit/miss.
-14. Evaluation output is written to JSON/CSV and rendered in the dashboard.
-
-### 20.3 Deployment
-Recommended MVP deployment:
-- Dockerized FastAPI app.
-- Managed Redis.
-- Pinecone serverless index.
-- NVIDIA NIM endpoint.
-- SQLite for demo or PostgreSQL for shared/stable deployment.
-- Local disk for demo uploads or S3-compatible object storage for cloud uploads.
-- HTTPS via platform proxy.
-- Basic auth enabled for demo privacy.
-- Slack app installed in a developer sandbox workspace.
-- Public callback URL configured for Slack events, commands, and interactivity.
-
-Commands:
-```bash
-docker compose up --build
-python evaluate.py
-```
-
-### 20.4 Evaluation Metrics
-Core MVP metrics:
-- **Route accuracy**: predicted route equals expected route.
-- **Citation pass rate**: factual answers include at least one citation.
-- **Average latency**: mean end-to-end `/chat` response time.
-- **Tool-call coverage**: document search, comparison, and education tools are exercised.
-- **Cache hit rate**: Redis hits divided by total cacheable questions.
-- **Endpoint health**: `/health` and `/metrics` return 200.
-
-Future quality metrics:
-- retrieval recall@k,
-- answer faithfulness,
-- citation precision,
-- hallucination rate,
-- safety refusal accuracy,
-- user task success rate.
-
-## 21. Performance Evaluation Dashboard
-
-Build a CareMind performance evaluation dashboard to track quality over time across test sets, routes, and Slack/web interaction surfaces.
-
-### 21.1 Dashboard Goals
-- Track RAG accuracy, citation precision, retrieval latency, route accuracy, and cache hit rate.
-- Compare metrics across synthetic test sets, document types, query types, and model configurations.
-- Surface regressions after prompt, chunking, embedding, retrieval, Slack response formatting, or safety changes.
-- Support both offline eval runs and sampled live-traffic checks.
-- Provide a demo-friendly view for hackathon judges showing quality, grounding, and operational maturity.
-
-### 21.2 Core Metrics
-The dashboard shall include at least:
-- RAG accuracy: end-to-end answer correctness against labeled references.
-- Citation precision: fraction of cited claims that are supported by the cited passage.
-- Citation completeness: fraction of factual claims with citations.
-- Retrieval latency: time spent in vector search and reranking.
-- End-to-end latency: total `/chat` or Slack request response time.
-- Route accuracy: predicted route versus expected route.
-- Retrieval precision@k and recall@k for gold passages.
-- Faithfulness: answer claims supported by retrieved context.
-- Slack interaction success rate: percentage of Slack requests that receive a successful response.
-
-### 21.3 Views
-- Trend lines for each metric by date.
-- Breakdown by test set, question type, document type, route, and surface (`web` or `slack`).
-- Top failing examples with gold answer, retrieved chunks, model answer, and citations.
-- Comparison view for model, prompt, embedding, and Slack formatting experiments.
-- Threshold indicators showing pass, warn, and fail states.
-- Hackathon summary panel showing route accuracy, citation pass rate, latency, cache hit rate, and tool-call coverage.
-
-### 21.4 Evaluation Pipeline
-- `python evaluate.py` shall generate a repeatable offline report.
-- The report shall be written to JSON or CSV and exposed through the dashboard.
-- Scheduled runs may compare current results with the previous baseline.
-- The dashboard shall make regressions visible without manual log inspection.
-- Slack demo interactions may be sampled into anonymized evaluation logs when using only synthetic or de-identified data.
-
-### 21.5 Deployment Surface
-- Expose the dashboard in the web app as an admin or demo page.
-- Link to the dashboard from Slack messages or shortcuts when appropriate.
-- Keep the implementation simple enough for the one-week MVP scope.
-- Do not expose private documents, full Slack messages, or user identifiers in public dashboard views.
-
-## 22. Slack Hackathon Submission Plan
-
-CareMind can be submitted to the Slack Agent Builder Challenge as a **Slack Agent for Good** project, with **New Slack Agent** as a backup track. The public Devpost page lists a deadline of July 13, 2026 at 5:00 PM PDT.
-
-### 22.1 Submission Positioning
-- Project name: CareMind Slack Agent.
-- One-line pitch: A Slack agent that helps teams ask citation-backed questions over synthetic or de-identified medical documents.
-- Impact angle: Safer medical education, research review, and document understanding inside the collaboration tool teams already use.
-- Technical angle: Slack agent workflow + LangGraph RAG backend + MCP-style document tools + evaluation dashboard.
-
-### 22.2 Hackathon Requirements Mapping
-- Primary qualifying technology: MCP server integration for document search, report comparison, timeline extraction, and medical education tools.
-- Slack agent/app workflow: Slack is the primary interaction surface for the working project.
-- Optional qualifying technology: Slack AI capabilities or Real-Time Search API may be added only if they fit the final implementation without bloating scope.
-- Working project footage: demo video shows Slack Q&A, report comparison, citations, and dashboard metrics.
-- Architecture diagram: show Slack app, FastAPI adapter, LangGraph agent, MCP tools, Pinecone/SQLite, Redis, NVIDIA endpoints, and dashboard.
-- Sandbox URL/access: provide Slack developer sandbox access for judging.
-
-### 22.3 MVP Build Order
-1. Ship web upload, seeded demo, chat, comparison, metrics, and eval dashboard.
-2. Add Slack app authentication, event handling, and message formatting.
-3. Route Slack messages into the existing `/chat` and `/compare` backend flows.
-4. Add Slack shortcuts/buttons for seed demo, compare reports, and open dashboard.
-5. Record the demo video and include architecture diagram plus evaluation results.
+Keep the synthetic-data demo path fully functional throughout.
