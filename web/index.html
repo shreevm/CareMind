@@ -11,7 +11,7 @@
       <section class="sidebar">
         <div>
           <p class="eyebrow">CareMind</p>
-          <h1>Medical document RAG workspace</h1>
+          <h1>Medical AI Assistant</h1>
         </div>
 
         <div class="toolbar">
@@ -44,8 +44,16 @@
             Upload a synthetic medical report or seed the demo, then ask what changed, what the key findings are, or which evidence supports a statement.
           </div>
         </div>
-        <form id="chat-form" class="composer">
+        <form id="chat-form" class="composer" aria-label="Chat composer">
           <input id="message" autocomplete="off" placeholder="Ask about the uploaded reports..." />
+          <button id="voice" type="button" class="icon-button" title="Dictate question" aria-label="Dictate question">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z"></path>
+              <path d="M19 11a7 7 0 0 1-14 0"></path>
+              <path d="M12 18v4"></path>
+              <path d="M8 22h8"></path>
+            </svg>
+          </button>
           <button type="submit">Send</button>
         </form>
       </section>

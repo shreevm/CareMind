@@ -150,6 +150,22 @@ def chat(
     return services.agent.answer(request)
 
 
+@app.post("/chat/inspect")
+def chat_inspect(
+    request: ChatRequest,
+    services: Annotated[Services, Depends(get_services)],
+) -> dict:
+    response = services.agent.answer(request)
+    return {
+        "answer": response.answer,
+        "route": response.route,
+        "tool_calls": response.tool_calls,
+        "citations": response.citations,
+        "safety_notes": response.safety_notes,
+        "trace": response.trace,
+    }
+
+
 @app.get("/search", response_model=SearchResponse)
 def search(
     query: str,

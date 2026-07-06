@@ -1,0 +1,135 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CareMind Chat API",
+    "version": "0.1.0",
+    "description": "Chat endpoint contract for CareMind agentic medical RAG assistant."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000"
+    }
+  ],
+  "paths": {
+    "/chat": {
+      "post": {
+        "summary": "Send a user message to the CareMind agent.",
+        "operationId": "postChat",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful chat response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ChatRequest": {
+        "type": "object",
+        "required": ["message", "session_id", "workspace_id"],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "User text or transcribed voice input."
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "input_modality": {
+            "type": "string",
+            "enum": ["text", "voice", "image", "document"],
+            "default": "text"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            }
+          },
+          "language": {
+            "type": "string",
+            "default": "en"
+          }
+        }
+      },
+      "Attachment": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["pdf", "text", "image", "audio"]
+          },
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      "Citation": {
+        "type": "object",
+        "required": ["source_id", "quote"],
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "chunk_id": {
+            "type": "string"
+          },
+          "quote": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatResponse": {
+        "type": "object",
+        "required": ["answer", "route", "citations"],
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "route": {
+            "type": "string"
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            }
+          },
+          "cache_hit": {
+            "type": "boolean"
+          },
+          "guardrails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "latency_ms": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  }
+}

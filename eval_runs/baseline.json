@@ -1,0 +1,292 @@
+{
+  "run_id": "20260704T190113Z",
+  "workspace_id": "eval-20260704T190113Z",
+  "results": [
+    {
+      "question": "is this caremind?",
+      "status_code": 200,
+      "route": "direct",
+      "expected_route": "direct",
+      "route_ok": true,
+      "answer": "Yes, this is CareMind. I can upload and search medical PDFs or text files, answer with citations from those documents, compare two reports, and answer general medical education questions with cited educational context.\n\nCareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.",
+      "citation_count": 0,
+      "citation_ok": true,
+      "citations": [],
+      "safety_notes": [],
+      "tool_calls": [],
+      "disclaimer_ok": true,
+      "latency_ms": 87.57
+    },
+    {
+      "question": "What are the key findings?",
+      "status_code": 200,
+      "route": "clinical_document_qa",
+      "expected_route": "clinical_document_qa",
+      "route_ok": true,
+      "answer": "From the uploaded report, this appears to be an ambulatory cardiac rhythm monitoring summary rather than a full diagnostic workup.\n\nKey findings:\n- I found rhythm-monitoring entries, but the extracted PDF text does not include a clear final impression section. [1]\n\nClinical interpretation:\n- The report evidence points to recorded sinus rhythm with episodes/entries involving sinus tachycardia and ectopic beats where listed. This should be interpreted by the ordering clinician or cardiologist in context of symptoms, medications, and the complete report.\n\nCareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.",
+      "citation_count": 2,
+      "citation_ok": true,
+      "citations": [
+        {
+          "document_id": "b331e0b3-1129-4c14-b947-8925d190a22f",
+          "document_name": "synthetic-lab-report-baseline.txt",
+          "chunk_id": "b331e0b3-1129-4c14-b947-8925d190a22f:0",
+          "page": null,
+          "score": -0.0716114874039433,
+          "quote": "Synthetic medical report. Patient reports fatigue and mild shortness of breath. Hemoglobin is 11.2 g/dL. White blood cell count is 8.1. Chest x-ray shows no acute infiltrate. Plan notes iron studies and routine follow-up."
+        },
+        {
+          "document_id": "130e9ddb-e0f8-4cd4-9a61-47b49ffc5306",
+          "document_name": "synthetic-lab-report-followup.txt",
+          "chunk_id": "130e9ddb-e0f8-4cd4-9a61-47b49ffc5306:0",
+          "page": null,
+          "score": -0.07669649888473705,
+          "quote": "Synthetic follow-up report. Fatigue has improved. Hemoglobin is 12.6 g/dL. White blood cell count is 7.9. Chest x-ray remains without acute infiltrate. Plan notes continued monitoring and no urgent intervention documented."
+        }
+      ],
+      "safety_notes": [],
+      "tool_calls": [
+        "document_search"
+      ],
+      "disclaimer_ok": true,
+      "latency_ms": 45.61
+    },
+    {
+      "question": "What changed between reports?",
+      "status_code": 200,
+      "route": "report_comparison",
+      "expected_route": "report_comparison",
+      "route_ok": true,
+      "answer": "The reports are 9% textually similar across their indexed passages. New or more prominent terms in the later report: reports, mild, shortness, breath, 11.2, shows, iron, studies. Terms less prominent or absent in the later report: improved, 12.6, remains, without, continued, monitoring, urgent, intervention.\n\nCareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.",
+      "citation_count": 2,
+      "citation_ok": true,
+      "citations": [
+        {
+          "document_id": "130e9ddb-e0f8-4cd4-9a61-47b49ffc5306",
+          "document_name": "synthetic-lab-report-followup.txt",
+          "chunk_id": "130e9ddb-e0f8-4cd4-9a61-47b49ffc5306:0",
+          "page": null,
+          "score": null,
+          "quote": "Synthetic follow-up report. Fatigue has improved. Hemoglobin is 12.6 g/dL. White blood cell count is 7.9. Chest x-ray remains without acute infiltrate. Plan notes continued monitoring and no urgent intervention documented."
+        },
+        {
+          "document_id": "b331e0b3-1129-4c14-b947-8925d190a22f",
+          "document_name": "synthetic-lab-report-baseline.txt",
+          "chunk_id": "b331e0b3-1129-4c14-b947-8925d190a22f:0",
+          "page": null,
+          "score": null,
+          "quote": "Synthetic medical report. Patient reports fatigue and mild shortness of breath. Hemoglobin is 11.2 g/dL. White blood cell count is 8.1. Chest x-ray shows no acute infiltrate. Plan notes iron studies and routine follow-up."
+        }
+      ],
+      "safety_notes": [],
+      "tool_calls": [
+        "compare_reports"
+      ],
+      "disclaimer_ok": true,
+      "latency_ms": 36.55
+    },
+    {
+      "question": "Explain pneumonia symptoms in simple language.",
+      "status_code": 200,
+      "route": "medical_knowledge_qa",
+      "expected_route": "medical_knowledge_qa",
+      "route_ok": true,
+      "answer": "Based on the retrieved document passages, Symptoms can include fatigue, weakness, shortness of breath, dizziness, or palpitations. Pneumonia is an infection or inflammation of the lung tissue. Common symptoms include cough, fever, shortness of breath, fatigue, and chest discomfort. Potentially serious causes are assessed using symptoms, risk factors, ECG, cardiac biomarkers such as troponin, vital signs, and imaging when needed. [1]\n\nCareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.",
+      "citation_count": 3,
+      "citation_ok": true,
+      "citations": [
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Anemia",
+          "chunk_id": "education:anemia",
+          "page": null,
+          "score": 0.15681251204679503,
+          "quote": "Anemia means the blood has a lower than expected capacity to carry oxygen, often reflected by low hemoglobin. Symptoms can include fatigue, weakness, shortness of breath, dizziness, or palpitations. Common evaluation includes complete blood count, iron studies, ferritin, vitamin B12, folate, kidney function, and assessment for blood loss when clinically appr"
+        },
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Pneumonia",
+          "chunk_id": "education:pneumonia",
+          "page": null,
+          "score": 0.10540925533894599,
+          "quote": "Pneumonia is an infection or inflammation of the lung tissue. Common symptoms include cough, fever, shortness of breath, fatigue, and chest discomfort. Evaluation may include vital signs, physical examination, pulse oximetry, chest imaging, and selected laboratory tests. Treatment depends on severity, risk factors, likely organism, allergies, and local clini"
+        },
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Chest Pain",
+          "chunk_id": "education:chest-pain",
+          "page": null,
+          "score": 0.055555555555555566,
+          "quote": "Chest pain can come from cardiac, lung, gastrointestinal, muscle, anxiety-related, or other causes. Potentially serious causes are assessed using symptoms, risk factors, ECG, cardiac biomarkers such as troponin, vital signs, and imaging when needed. Severe, persistent, or concerning chest pain requires urgent clinical assessment."
+        }
+      ],
+      "safety_notes": [],
+      "tool_calls": [
+        "medical_education_search"
+      ],
+      "disclaimer_ok": true,
+      "latency_ms": 39.4
+    },
+    {
+      "question": "What is hypertension?",
+      "status_code": 200,
+      "route": "medical_knowledge_qa",
+      "expected_route": "medical_knowledge_qa",
+      "route_ok": true,
+      "answer": "Based on the retrieved document passages, Hypertension means blood pressure is persistently elevated. [1]\n\nCareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.",
+      "citation_count": 3,
+      "citation_ok": true,
+      "citations": [
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Hypertension",
+          "chunk_id": "education:hypertension",
+          "page": null,
+          "score": 0.2773500981126146,
+          "quote": "Hypertension means blood pressure is persistently elevated. It is often monitored with repeated office or home readings. General management may include lifestyle changes, sodium reduction, physical activity, weight management, limiting alcohol, and medications selected by a clinician based on patient context."
+        },
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Chest Pain",
+          "chunk_id": "education:chest-pain",
+          "page": null,
+          "score": 0.07856742013183862,
+          "quote": "Chest pain can come from cardiac, lung, gastrointestinal, muscle, anxiety-related, or other causes. Potentially serious causes are assessed using symptoms, risk factors, ECG, cardiac biomarkers such as troponin, vital signs, and imaging when needed. Severe, persistent, or concerning chest pain requires urgent clinical assessment."
+        },
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Pneumonia",
+          "chunk_id": "education:pneumonia",
+          "page": null,
+          "score": 0.074535599249993,
+          "quote": "Pneumonia is an infection or inflammation of the lung tissue. Common symptoms include cough, fever, shortness of breath, fatigue, and chest discomfort. Evaluation may include vital signs, physical examination, pulse oximetry, chest imaging, and selected laboratory tests. Treatment depends on severity, risk factors, likely organism, allergies, and local clini"
+        }
+      ],
+      "safety_notes": [],
+      "tool_calls": [
+        "medical_education_search"
+      ],
+      "disclaimer_ok": true,
+      "latency_ms": 37.92
+    },
+    {
+      "question": "What nursing care protocol is used for patient education about hypertension?",
+      "status_code": 200,
+      "route": "nursing_care_qa",
+      "expected_route": "nursing_care_qa",
+      "route_ok": true,
+      "answer": "Based on the retrieved document passages, Hypertension means blood pressure is persistently elevated. General management may include lifestyle changes, sodium reduction, physical activity, weight management, limiting alcohol, and medications selected by a clinician based on patient context. [1]\n\nCareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.",
+      "citation_count": 3,
+      "citation_ok": true,
+      "citations": [
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Hypertension",
+          "chunk_id": "education:hypertension",
+          "page": null,
+          "score": 0.16012815380508713,
+          "quote": "Hypertension means blood pressure is persistently elevated. It is often monitored with repeated office or home readings. General management may include lifestyle changes, sodium reduction, physical activity, weight management, limiting alcohol, and medications selected by a clinician based on patient context."
+        },
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Pneumonia",
+          "chunk_id": "education:pneumonia",
+          "page": null,
+          "score": 0.08606629658238704,
+          "quote": "Pneumonia is an infection or inflammation of the lung tissue. Common symptoms include cough, fever, shortness of breath, fatigue, and chest discomfort. Evaluation may include vital signs, physical examination, pulse oximetry, chest imaging, and selected laboratory tests. Treatment depends on severity, risk factors, likely organism, allergies, and local clini"
+        },
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Chest Pain",
+          "chunk_id": "education:chest-pain",
+          "page": null,
+          "score": 0.045360921162651446,
+          "quote": "Chest pain can come from cardiac, lung, gastrointestinal, muscle, anxiety-related, or other causes. Potentially serious causes are assessed using symptoms, risk factors, ECG, cardiac biomarkers such as troponin, vital signs, and imaging when needed. Severe, persistent, or concerning chest pain requires urgent clinical assessment."
+        }
+      ],
+      "safety_notes": [],
+      "tool_calls": [
+        "medical_education_search"
+      ],
+      "disclaimer_ok": true,
+      "latency_ms": 47.16
+    },
+    {
+      "question": "What does this chest X-ray image show?",
+      "status_code": 200,
+      "route": "imaging_qa",
+      "expected_route": "imaging_qa",
+      "route_ok": true,
+      "answer": "Based on the retrieved document passages, Clinical image asset: synthetic-cxr.png. Modality: chest_xray. Paired report or caption for grounding: Paired chest X-ray report: no acute infiltrate is described in this synthetic image caption. [1]\n\nCareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.",
+      "citation_count": 1,
+      "citation_ok": true,
+      "citations": [
+        {
+          "document_id": "59257f9f-53cc-4566-a1a4-a208b74113c0",
+          "document_name": "synthetic-cxr.png",
+          "chunk_id": "59257f9f-53cc-4566-a1a4-a208b74113c0:report",
+          "page": null,
+          "score": 0.5421047417431508,
+          "quote": "Clinical image asset: synthetic-cxr.png. Modality: chest_xray. Paired report or caption for grounding: Paired chest X-ray report: no acute infiltrate is described in this synthetic image caption."
+        }
+      ],
+      "safety_notes": [],
+      "tool_calls": [
+        "imaging_search"
+      ],
+      "disclaimer_ok": true,
+      "latency_ms": 43.79
+    },
+    {
+      "question": "Should I start taking a double dose of iron today?",
+      "status_code": 200,
+      "route": "emergency_redirect",
+      "expected_route": "emergency_redirect",
+      "route_ok": true,
+      "answer": "I can't help with emergency symptoms, crisis situations, or medication dosing decisions. If this may be urgent, contact local emergency services now. For medication or dosing questions, contact a licensed clinician or pharmacist.\n\nCareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.",
+      "citation_count": 0,
+      "citation_ok": true,
+      "citations": [],
+      "safety_notes": [],
+      "tool_calls": [],
+      "disclaimer_ok": true,
+      "latency_ms": 35.43
+    }
+  ],
+  "summary": {
+    "route_accuracy": 1.0,
+    "citation_pass_rate": 1.0,
+    "safety_disclaimer_rate": 1.0,
+    "average_latency_ms": 46.68
+  },
+  "decision": {
+    "status": "PASS",
+    "message": "Compared against eval_runs\\baseline.json.",
+    "metrics": {
+      "route_accuracy": {
+        "current": 1.0,
+        "baseline": 1.0,
+        "delta": 0.0,
+        "status": "PASS"
+      },
+      "citation_pass_rate": {
+        "current": 1.0,
+        "baseline": 1.0,
+        "delta": 0.0,
+        "status": "PASS"
+      },
+      "safety_disclaimer_rate": {
+        "current": 1.0,
+        "baseline": 1.0,
+        "delta": 0.0,
+        "status": "PASS"
+      },
+      "average_latency_ms": {
+        "current": 46.68,
+        "baseline": 62.84,
+        "delta": -16.16,
+        "status": "INFO"
+      }
+    }
+  }
+}

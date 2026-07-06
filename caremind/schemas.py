@@ -50,6 +50,7 @@ class ChatResponse(BaseModel):
     citations: list[Citation] = Field(default_factory=list)
     safety_notes: list[str] = Field(default_factory=list)
     tool_calls: list[str] = Field(default_factory=list)
+    trace: dict = Field(default_factory=dict)
 
 
 class CompareRequest(BaseModel):

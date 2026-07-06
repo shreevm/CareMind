@@ -4,6 +4,56 @@ CareMind is a LangGraph-powered agentic RAG assistant for medical and research d
 
 The app is built to use NVIDIA NIM endpoints and Pinecone when keys are configured. For local demos, it falls back to deterministic local embeddings, SQLite vector search, and SQLite-backed chat history.
 
+## Architecture
+
+```text
+Browser / VS Code
+  -> FastAPI API
+  -> LangGraph CareMindAgent
+  -> route_query
+  -> check_cache
+  -> retrieval/tool node
+       - retrieve: document_search
+       - medical_education: medical_education_search
+       - compare: compare_reports
+  -> LLM generation
+       - NVIDIA chat model when NVIDIA_API_KEY is set
+       - local grounded fallback when no key is set
+  -> safety/disclaimer finalization
+  -> cited response
+```
+
+Retrieval path:
+
+```text
+Upload PDF/text
+  -> extract text
+  -> chunk text
+  -> embed chunks
+  -> upsert to vector store
+       - Pinecone when CAREMIND_VECTOR_BACKEND=pinecone
+       - SQLite/local cosine fallback otherwise
+  -> user question embedding
+  -> top-k chunk retrieval
+  -> lexical/clinical rerank
+  -> citations
+```
+
+Evaluation path:
+
+```text
+ragas_questions.jsonl
+  -> run CareMind retrieval
+  -> run CareMind generation
+  -> save RAGAS-shaped rows:
+       user_input
+       retrieved_contexts
+       response
+       reference
+  -> run RAGAS metrics if ragas is installed
+  -> always write fallback retrieval/generation diagnostics
+```
+
 ## Run Locally
 
 ```bash
@@ -79,6 +129,52 @@ The evaluator seeds demo reports and reports:
 - route accuracy,
 - citation pass rate,
 - average latency.
+
+### RAGAS Evaluation
+
+Run:
+
+```bash
+python evaluate_ragas.py
+```
+
+This evaluates retrieval first and generation second. It writes:
+
+- `eval_reports/ragas/<timestamp>.json`
+- `eval_reports/ragas/<timestamp>.ragas_dataset.jsonl`
+- `eval_reports/ragas/<timestamp>.md`
+
+The `.ragas_dataset.jsonl` file uses the standard RAGAS shape:
+
+```json
+{
+  "user_input": "What are the key findings?",
+  "retrieved_contexts": ["..."],
+  "response": "...",
+  "reference": "..."
+}
+```
+
+If `ragas` is not installed, the script still runs local diagnostics:
+
+- `retrieval_reference_term_recall`: whether retrieved chunks contain expected gold terms.
+- `generation_reference_term_recall`: whether the final answer contains expected gold terms.
+- `faithfulness_proxy_supported_sentence_rate`: rough answer support from retrieved context.
+- `route_accuracy`
+- `citation_pass_rate`
+
+For full RAGAS metrics, install dependencies and configure an evaluator LLM:
+
+```bash
+pip install ragas
+python evaluate_ragas.py
+```
+
+Full RAGAS mode attempts:
+
+- `LLMContextRecall`
+- `Faithfulness`
+- `FactualCorrectness`
 
 ## Deployment
 

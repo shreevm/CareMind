@@ -26,6 +26,8 @@ class AgentState(TypedDict, total=False):
     safety_notes: list[str]
     tool_calls: list[str]
     require_citations: bool
+    retrieved_chunks: list[dict]
+    trace_steps: list[dict]
     response: ChatResponse
 
 
@@ -91,15 +93,50 @@ class CareMindAgent:
             "tool_calls": [],
             "citations": [],
             "require_citations": route not in {"direct", "clarify"},
+            "retrieved_chunks": [],
+            "trace_steps": [
+                {
+                    "node": "route_query",
+                    "route": route,
+                    "elapsed_ms": round((time.perf_counter() - state["started_at"]) * 1000, 2),
+                    "notes": "Rule-based router selected the workflow branch.",
+                }
+            ],
         }
 
     def _check_cache_node(self, state: AgentState) -> AgentState:
         request = state["request"]
         cached = self.memory.cache_get(request.workspace_id, state["cache_key"])
         if cached is None:
-            return state
+            return {
+                **state,
+                "trace_steps": [
+                    *state.get("trace_steps", []),
+                    {
+                        "node": "check_cache",
+                        "cache_hit": False,
+                        "elapsed_ms": round((time.perf_counter() - state["started_at"]) * 1000, 2),
+                    },
+                ],
+            }
         response = ChatResponse(**cached)
         metrics.record_agent(response.route, response.tool_calls, 0, cache_hit=True)
+        response = response.model_copy(
+            update={
+                "trace": {
+                    **response.trace,
+                    "cache_hit": True,
+                    "steps": [
+                        *state.get("trace_steps", []),
+                        {
+                            "node": "check_cache",
+                            "cache_hit": True,
+                            "elapsed_ms": round((time.perf_counter() - state["started_at"]) * 1000, 2),
+                        },
+                    ],
+                }
+            }
+        )
         return {**state, "response": response, "cache_hit": True}
 
     def _cached_response_node(self, state: AgentState) -> AgentState:
@@ -123,6 +160,7 @@ class CareMindAgent:
 
     def _compare_node(self, state: AgentState) -> AgentState:
         request = state["request"]
+        started = time.perf_counter()
         documents = self.tools.store.list_documents(request.workspace_id)
         if len(documents) < 2:
             return {**state, "answer": "Please upload at least two reports before asking me to compare them."}
@@ -134,22 +172,44 @@ class CareMindAgent:
             **state,
             "answer": comparison.summary,
             "citations": comparison.citations,
+            "retrieved_chunks": [citation.model_dump(mode="json") for citation in comparison.citations],
             "tool_calls": [*state.get("tool_calls", []), "compare_reports"],
+            "trace_steps": [
+                *state.get("trace_steps", []),
+                {
+                    "node": "compare",
+                    "tool": "compare_reports",
+                    "document_count": min(len(documents), 2),
+                    "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
+                },
+            ],
         }
 
     def _medical_education_node(self, state: AgentState) -> AgentState:
         request = state["request"]
+        started = time.perf_counter()
         chunks = self.tools.medical_education_search(request.message, top_k=min(request.top_k, 3))
         history = self.memory.load(request.session_id, request.workspace_id)
         return {
             **state,
             "answer": self.llm.answer(question=request.message, chunks=chunks, history=history),
             "citations": citations_from_chunks(chunks),
+            "retrieved_chunks": [self._chunk_trace(chunk) for chunk in chunks],
             "tool_calls": [*state.get("tool_calls", []), "medical_education_search"],
+            "trace_steps": [
+                *state.get("trace_steps", []),
+                {
+                    "node": "medical_education",
+                    "tool": "medical_education_search",
+                    "retrieved_count": len(chunks),
+                    "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
+                },
+            ],
         }
 
     def _retrieve_node(self, state: AgentState) -> AgentState:
         request = state["request"]
+        started = time.perf_counter()
         chunks = self.tools.document_search(
             request.message,
             workspace_id=request.workspace_id,
@@ -160,7 +220,18 @@ class CareMindAgent:
             **state,
             "answer": self.llm.answer(question=request.message, chunks=chunks, history=history),
             "citations": citations_from_chunks(chunks),
+            "retrieved_chunks": [self._chunk_trace(chunk) for chunk in chunks],
             "tool_calls": [*state.get("tool_calls", []), "document_search"],
+            "trace_steps": [
+                *state.get("trace_steps", []),
+                {
+                    "node": "retrieve",
+                    "tool": "document_search",
+                    "top_k": request.top_k,
+                    "retrieved_count": len(chunks),
+                    "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
+                },
+            ],
         }
 
     def _finalize_node(self, state: AgentState) -> AgentState:
@@ -174,6 +245,7 @@ class CareMindAgent:
         self.memory.append(request.session_id, request.workspace_id, "user", request.message)
         self.memory.append(request.session_id, request.workspace_id, "assistant", answer)
 
+        total_latency_ms = round((time.perf_counter() - state["started_at"]) * 1000, 2)
         response = ChatResponse(
             session_id=request.session_id,
             route=state["route"],
@@ -181,6 +253,38 @@ class CareMindAgent:
             citations=state.get("citations", []),
             safety_notes=safety_notes,
             tool_calls=state.get("tool_calls", []),
+            trace={
+                "session_id": request.session_id,
+                "workspace_id": request.workspace_id,
+                "route": state["route"],
+                "cache_hit": False,
+                "vector_backend": (
+                    "pinecone"
+                    if self.tools.vectorstore.settings.should_use_pinecone
+                    else "local-sqlite"
+                ),
+                "embedding_model": (
+                    self.tools.embeddings.settings.nvidia_embedding_model
+                    if self.tools.embeddings.settings.nvidia_api_key
+                    else f"local-hashing-{self.tools.embeddings.dimension}d"
+                ),
+                "generation_model": (
+                    self.llm.settings.nvidia_chat_model
+                    if self.llm.settings.nvidia_api_key
+                    else "local-grounded-fallback"
+                ),
+                "retrieved_chunks": state.get("retrieved_chunks", []),
+                "steps": [
+                    *state.get("trace_steps", []),
+                    {
+                        "node": "finalize",
+                        "citation_count": len(state.get("citations", [])),
+                        "safety_note_count": len(safety_notes),
+                        "elapsed_ms": total_latency_ms,
+                    },
+                ],
+                "total_latency_ms": total_latency_ms,
+            },
         )
         if state["route"] in {"retrieve", "medical_education", "compare"}:
             self.memory.cache_set(request.workspace_id, state["cache_key"], response.model_dump(mode="json"))
@@ -238,3 +342,13 @@ class CareMindAgent:
     def _cache_key(self, request: ChatRequest, route: str) -> str:
         raw = f"{route}|{request.workspace_id}|{request.message.strip().lower()}|{request.top_k}"
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+    def _chunk_trace(self, chunk) -> dict:
+        return {
+            "chunk_id": chunk.chunk_id,
+            "document_id": chunk.document_id,
+            "document_name": chunk.document_name,
+            "page": chunk.page,
+            "score": chunk.score,
+            "preview": chunk.text[:500],
+        }

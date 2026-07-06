@@ -106,6 +106,9 @@ class LLMClient:
                 "health condition",
                 "condition of the patient",
                 "patient condition",
+                "tell me about the patient",
+                "patient details",
+                "patient profile",
                 "clinical summary",
                 "summarize",
             ]
@@ -114,6 +117,7 @@ class LLMClient:
     def _clinical_summary_answer(self, chunks: list[RetrievedChunk]) -> str:
         evidence_texts = [clean_evidence_text(chunk.text) for chunk in chunks]
         combined = "\n".join(evidence_texts)
+        patient_profile = self._extract_patient_profile(combined)
         findings = self._extract_clinical_findings(evidence_texts)
         rhythm_terms = self._extract_unique_matches(
             combined,
@@ -137,9 +141,19 @@ class LLMClient:
 
         lines = [
             "From the uploaded report, this appears to be an ambulatory cardiac rhythm monitoring summary rather than a full diagnostic workup.",
-            "",
-            "Key findings:",
         ]
+        if patient_profile:
+            lines.extend(
+                [
+                    "",
+                    "Patient profile:",
+                    f"- Name: {patient_profile.get('name', 'Not found')} [1]",
+                    f"- ID: {patient_profile.get('id', 'Not found')} [1]",
+                    f"- Age: {patient_profile.get('age', 'Not found')} [1]",
+                    f"- Gender: {patient_profile.get('gender', 'Not found')} [1]",
+                ]
+            )
+        lines.extend(["", "Key findings:"])
         if findings:
             for index, finding in enumerate(findings[:5], start=1):
                 lines.append(f"- {finding} [{min(index, len(chunks))}]")
@@ -166,6 +180,33 @@ class LLMClient:
             ]
         )
         return "\n".join(lines)
+
+    def _extract_patient_profile(self, text: str) -> dict[str, str]:
+        compact = re.sub(r"\s+", " ", text).strip()
+        profile_match = re.search(
+            r"Report for\s+(.+?)\s+ID\s+([A-Za-z0-9-]+)\s+Age\s+(\d{1,3}\s*(?:yrs?|years?)?)\s+Gender\s+([A-Za-z-]+)",
+            compact,
+            flags=re.IGNORECASE,
+        )
+        if profile_match:
+            return {
+                "name": profile_match.group(1).strip(),
+                "id": profile_match.group(2).strip(),
+                "age": profile_match.group(3).strip(),
+                "gender": profile_match.group(4).strip(),
+            }
+
+        def find(pattern: str) -> str:
+            match = re.search(pattern, compact, flags=re.IGNORECASE)
+            return match.group(1).strip() if match else ""
+
+        profile = {
+            "name": find(r"(?:patient name|name)\s*[:=-]\s*([A-Za-z ,.'-]+)"),
+            "id": find(r"(?:patient id|mrn|medical record(?: number)?|id)\s*[:#=-]?\s*([A-Za-z0-9-]+)"),
+            "age": find(r"age\s*[:=-]?\s*(\d{1,3}\s*(?:yrs?|years?)?)"),
+            "gender": find(r"(?:gender|sex)\s*[:=-]?\s*(male|female|man|woman|nonbinary|non-binary|other)"),
+        }
+        return {key: value for key, value in profile.items() if value}
 
     def _extract_clinical_findings(self, evidence_texts: list[str]) -> list[str]:
         findings: list[str] = []
