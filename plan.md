@@ -24,7 +24,8 @@ User input enters the frontend, is normalized, routed through a FastAPI backend,
 
 ### 3.2 Core services
 - API service: chat, upload, compare, metrics, eval, health.
-- Agent service: LangGraph router and workflow nodes.
+- Agent service: `CareMindAgent` LangGraph orchestrator plus specialist agents under `backend/caremind/agents/`.
+- Multi-agent orchestration layer: supervisor agent plus specialist agents for document RAG, medical education, report comparison, safety, memory, and citation validation.
 - Retrieval service: document chunk search, image-report matching.
 - MCP tool server: document search, comparison, timeline, education, imaging tools.
 - Cache/session layer: Redis with SQLite fallback.
@@ -50,8 +51,32 @@ The router will classify requests into:
 - nursing_care_qa
 - emergency_redirect
 - clarify
+The router will act as a Supervisor Agent. It selects the correct specialist agent based on user intent, available documents, safety constraints, and cache state.
 
 The router should be cheap, fast, and independently measurable. A small classifier or LoRA-tuned router is preferred over using the main generation model for routing.
+
+## 5.1 Multi-Agent Design
+
+CareMind will use a supervisor-specialist pattern:
+
+- Supervisor Agent: classifies intent and chooses the workflow.
+- Document RAG Agent: answers from uploaded documents with citations.
+- Medical Education Agent: answers from trusted education corpus.
+- Report Comparison Agent: compares two uploaded reports.
+- Safety Agent: checks input and output for unsafe medical behavior.
+- Memory Agent: manages Redis/SQLite session memory and cache.
+- Citation Agent: verifies factual answers include supporting evidence.
+
+The agents are orchestrated through LangGraph. Each agent owns one narrow responsibility and records trace steps for observability.
+
+Current implementation files:
+- `backend/caremind/agent.py`: LangGraph orchestration, cache checks, final response assembly.
+- `backend/caremind/agents/supervisor.py`: route selection.
+- `backend/caremind/agents/document_rag.py`: uploaded-document RAG.
+- `backend/caremind/agents/medical_education.py`: trusted education-corpus RAG.
+- `backend/caremind/agents/comparison.py`: report comparison.
+- `backend/caremind/agents/direct.py`: product/help responses.
+- `backend/caremind/agents/clarification.py`: missing-context responses.
 
 ## 6. Retrieval Design
 ### 6.1 Text retrieval
@@ -174,7 +199,7 @@ Grafana dashboard, MIRAGE benchmarking, router tuning.
 - Full PHI compliance certification.
 - EHR/FHIR integration.
 - DICOM support.
-- Multi-agent systems.
+- Fully autonomous open-ended agents without routing constraints.
 - Emergency triage automation.
 - Paid GPU inference for text.
 - Fine-tuning the main generator as the default path.

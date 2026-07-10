@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from app import app
+from backend.app import app
 
 
 def load_cases(path: Path) -> list[dict]:
@@ -51,7 +51,7 @@ def main() -> None:
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     workspace_id = f"eval-{run_id}"
     client.post("/demo/seed", params={"workspace_id": workspace_id})
-    cases = load_cases(Path("eval_questions.jsonl"))
+    cases = load_cases(Path(__file__).with_name("eval_questions.jsonl"))
     results = []
 
     for case in cases:
@@ -102,7 +102,7 @@ def main() -> None:
             "average_latency_ms": round(average_latency, 2),
         },
     }
-    reports_dir = Path("eval_reports")
+    reports_dir = Path(__file__).resolve().parent / "eval_reports"
     reports_dir.mkdir(exist_ok=True)
     json_path = reports_dir / f"{run_id}.json"
     markdown_path = reports_dir / f"{run_id}.md"

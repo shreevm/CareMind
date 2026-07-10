@@ -6,7 +6,7 @@ This is the full consolidated spec. It supersedes v0.4 and v0.5; nothing from th
 
 ## 1. Product Summary
 
-CareMind is an agentic, multimodal RAG assistant for medical and research documents, images, and voice, with two user interfaces:
+CareMind is an agentic, multimodal, multi-agent RAG assistant for medical and research documents, images, and voice, with two user interfaces:
 - Web chat app.
 - VS Code sidebar extension.
 
@@ -143,7 +143,7 @@ NVIDIA rerank model if available, or simple similarity-based rerank.
 - Full PHI compliance certification.
 - EHR/FHIR integration.
 - DICOM support.
-- Multi-agent orchestration beyond the single router + tool-call pattern.
+- Fully autonomous open-ended agents beyond the controlled supervisor-specialist pattern.
 - Voice-first real-time speech-to-speech as the primary architecture.
 - Mobile app.
 - Fine-tuning of the generation LLM.
@@ -235,7 +235,17 @@ The system may optionally read final answers aloud using text-to-speech.
 
 ## 9. Architecture
 
-User (Web/VSCode) → FastAPI backend → input guardrail → router → Redis cache check → route-specific retrieval/tool/model path → output guardrail → response + metrics + cache
+User (Web/VSCode) -> FastAPI backend -> input guardrail -> SupervisorAgent -> Redis cache check -> specialist agent -> route-specific retrieval/tool/model path -> output guardrail -> response + metrics + cache
+
+Current MVP specialist agents:
+- SupervisorAgent: classifies user intent and selects the specialist branch.
+- DirectResponseAgent: answers product/help questions without document retrieval.
+- DocumentRAGAgent: retrieves uploaded document chunks from Pinecone or SQLite fallback and generates cited answers.
+- MedicalEducationAgent: retrieves from the trusted medical education corpus for general knowledge questions.
+- ReportComparisonAgent: compares two indexed reports and returns cited differences.
+- ClarificationAgent: asks for missing context when the user request is too vague.
+- SafetyLayer: performs input/output medical safety checks and disclaimer finalization.
+- ConversationMemory: provides Redis-backed session/cache state with SQLite fallback.
 
 Offline:
 - evaluate.py → internal test set + MIRAGE → scoring
@@ -302,7 +312,7 @@ Running an eval script once produces a number with nothing to compare it to, not
 5. UPDATE → on PASS, current run becomes the new baseline.
 
 ### 12.3 Implementation
-evaluate.py writes results to eval_runs/<timestamp>.json and to eval_runs/baseline.json on PASS. Comparison step loads baseline.json, computes per-metric deltas, applies thresholds. Results are pushed to Prometheus Pushgateway for Grafana trend lines. Optional GitHub Action runs the harness on PRs touching prompts/chunking/retrieval/routing code.
+evaluate.py writes results to backend/eval_runs/<timestamp>.json and to backend/eval_runs/baseline.json on PASS. Comparison step loads baseline.json, computes per-metric deltas, applies thresholds. Results are pushed to Prometheus Pushgateway for Grafana trend lines. Optional GitHub Action runs the harness on PRs touching prompts/chunking/retrieval/routing code.
 
 ### 12.4 Testing "with loop" vs "without loop"
 Fixed labeled test set plus MIRAGE for the knowledge route. Without loop: compare numbers manually. With loop: diff is programmatic and produces a PASS/FAIL table automatically.
@@ -345,12 +355,12 @@ Use prometheus_client to register metrics and expose /metrics. Grafana panels sh
 Correctness/relevance/groundedness via LLM-as-judge against labeled data. Retrieval relevance, route accuracy, citation pass rate computed directly from agent output. MIRAGE scored using its standard zero-shot question-only retrieval protocol.
 
 ### 16.3 Output
-eval_runs/<timestamp>.json and eval_runs/baseline.json. Failing examples link to LangSmith traces.
+backend/eval_runs/<timestamp>.json and backend/eval_runs/baseline.json. Failing examples link to LangSmith traces.
 
 ## 17. User Flows
 
 ### Flow A: Ask a Question
-Upload → route to clinical_document_qa or medical_knowledge_qa → retrieve from Pinecone → LLM answers with citations → shown in web/VS Code → session/cache in Redis.
+Upload -> route to clinical_document_qa or medical_knowledge_qa -> retrieve from Pinecone -> LLM answers with citations -> shown in the web UI/VS Code -> session/cache in Redis.
 
 ### Flow B: Compare Reports
 Upload two reports → route to report_comparison → MCP comparison tool identifies differences → agent summarizes with citations.
@@ -381,7 +391,7 @@ User speaks into the microphone → speech-to-text produces a transcript → tra
 - Frontend web: Next.js/React, Tailwind, streaming chat UI.
 - Frontend VS Code: TypeScript, VS Code extension API, WebView sidebar.
 - Backend: FastAPI, LangGraph StateGraph, Pydantic, uvicorn.
-- Agent graph nodes: input guardrail, route, check cache, direct response, document retrieval, imaging retrieval, report comparison, medical/nursing education retrieval, clarification, output guardrail, finalization.
+- Agent graph nodes: input guardrail, SupervisorAgent route, check cache, direct response agent, document RAG agent, imaging retrieval, report comparison agent, medical/nursing education agent, clarification agent, output guardrail, finalization.
 - RAG & retrieval: NVIDIA embeddings, Pinecone, local SQLite fallback, simple recursive-ish text splitter.
 - Vector DB: Pinecone with metadata filtering by document/workspace ID.
 - Cache & session: Redis.
@@ -394,7 +404,7 @@ User speaks into the microphone → speech-to-text produces a transcript → tra
 - Metrics: prometheus_client, Grafana.
 - Router fine-tuning: LoRA on a small base model.
 - Deployment: Docker; Render/Cloudflare/Fly.io/simple VM.
-- Evaluation: python evaluate.py with internal test set + MIRAGE.
+- Evaluation: `uv run python backend/evaluate.py` with internal test set + MIRAGE.
 
 ## 19. Non-Functional Requirements
 
@@ -446,7 +456,7 @@ CAREMIND_PROMETHEUS_PUSHGATEWAY_URL=http://localhost:9091
 # Eval / loop engineering
 CAREMIND_EVAL_FAIL_THRESHOLD=0.05
 CAREMIND_EVAL_WARN_THRESHOLD=0.02
-CAREMIND_EVAL_BASELINE_PATH=eval_runs/baseline.json
+CAREMIND_EVAL_BASELINE_PATH=backend/eval_runs/baseline.json
 
 # Guardrails
 CAREMIND_GUARDRAILS_ENABLED=true
@@ -503,7 +513,7 @@ The system is successful if:
 - Use voice input to ask a question and show the transcript routed through the same agent.
 - Open LangSmith, show the trace for a prior query.
 - Open Grafana, show request/latency/cache panels.
-- Run python evaluate.py, show baseline saved, including a MIRAGE sub-dataset score.
+- Run `uv run python backend/evaluate.py`, show baseline saved, including a MIRAGE sub-dataset score.
 - Make a deliberate regression, run evaluate.py again, show FAIL diff table.
 - Upload a document containing an injection attempt, show it neutralized.
 - Ask an emergency-symptom or dosage-style question, show emergency_redirect firing.

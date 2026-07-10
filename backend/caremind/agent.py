@@ -1,18 +1,24 @@
 import hashlib
 import time
-from typing import Literal, TypedDict
+from typing import TypedDict
 
 from langgraph.graph import END, StateGraph
 
+from .agents import (
+    ClarificationAgent,
+    DirectResponseAgent,
+    DocumentRAGAgent,
+    MedicalEducationAgent,
+    ReportComparisonAgent,
+    Route,
+    SupervisorAgent,
+)
 from .llm import LLMClient
 from .memory import ConversationMemory
 from .metrics import metrics
 from .safety import SafetyLayer
 from .schemas import ChatRequest, ChatResponse, Citation
-from .tools import DocumentTools, citations_from_chunks
-
-
-Route = Literal["direct", "retrieve", "compare", "medical_education", "clarify"]
+from .tools import DocumentTools
 
 
 class AgentState(TypedDict, total=False):
@@ -43,10 +49,19 @@ class CareMindAgent:
         self.llm = llm
         self.memory = memory
         self.safety = safety
+        self.supervisor_agent = SupervisorAgent()
+        self.direct_agent = DirectResponseAgent()
+        self.clarification_agent = ClarificationAgent()
+        self.document_rag_agent = DocumentRAGAgent(tools, llm, memory)
+        self.medical_education_agent = MedicalEducationAgent(tools, llm, memory)
+        self.report_comparison_agent = ReportComparisonAgent(tools)
         self.graph = self._build_graph()
 
     def answer(self, request: ChatRequest) -> ChatResponse:
-        state = self.graph.invoke({"request": request, "started_at": time.perf_counter()})
+        state = self.graph.invoke(
+            {"request": request, "started_at": time.perf_counter()},
+            config=self._run_config(request),
+        )
         return state["response"]
 
     def _build_graph(self):
@@ -83,7 +98,7 @@ class CareMindAgent:
 
     def _route_node(self, state: AgentState) -> AgentState:
         request = state["request"]
-        route = self._route(request.message)
+        route = self.supervisor_agent.route(request.message)
         return {
             **state,
             "route": route,
@@ -97,9 +112,10 @@ class CareMindAgent:
             "trace_steps": [
                 {
                     "node": "route_query",
+                    "agent": "SupervisorAgent",
                     "route": route,
                     "elapsed_ms": round((time.perf_counter() - state["started_at"]) * 1000, 2),
-                    "notes": "Rule-based router selected the workflow branch.",
+                    "notes": "Supervisor selected the specialist agent branch.",
                 }
             ],
         }
@@ -145,94 +161,38 @@ class CareMindAgent:
     def _direct_node(self, state: AgentState) -> AgentState:
         return {
             **state,
-            "answer": (
-                "Yes, this is CareMind. I can upload and search medical PDFs or text files, "
-                "answer with citations from those documents, compare two reports, and answer general "
-                "medical education questions with cited educational context."
-            ),
+            "answer": self.direct_agent.answer(state["request"].message),
         }
 
     def _clarify_node(self, state: AgentState) -> AgentState:
         return {
             **state,
-            "answer": "Which uploaded report or medical topic should I use as the evidence source?",
+            "answer": self.clarification_agent.answer(),
         }
 
     def _compare_node(self, state: AgentState) -> AgentState:
-        request = state["request"]
-        started = time.perf_counter()
-        documents = self.tools.store.list_documents(request.workspace_id)
-        if len(documents) < 2:
-            return {**state, "answer": "Please upload at least two reports before asking me to compare them."}
-        comparison = self.tools.compare_reports(
-            [doc.document_id for doc in documents[:2]],
-            workspace_id=request.workspace_id,
+        updates = self.report_comparison_agent.run(
+            state["request"],
+            state.get("tool_calls", []),
+            state.get("trace_steps", []),
         )
-        return {
-            **state,
-            "answer": comparison.summary,
-            "citations": comparison.citations,
-            "retrieved_chunks": [citation.model_dump(mode="json") for citation in comparison.citations],
-            "tool_calls": [*state.get("tool_calls", []), "compare_reports"],
-            "trace_steps": [
-                *state.get("trace_steps", []),
-                {
-                    "node": "compare",
-                    "tool": "compare_reports",
-                    "document_count": min(len(documents), 2),
-                    "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
-                },
-            ],
-        }
+        return {**state, **updates}
 
     def _medical_education_node(self, state: AgentState) -> AgentState:
-        request = state["request"]
-        started = time.perf_counter()
-        chunks = self.tools.medical_education_search(request.message, top_k=min(request.top_k, 3))
-        history = self.memory.load(request.session_id, request.workspace_id)
-        return {
-            **state,
-            "answer": self.llm.answer(question=request.message, chunks=chunks, history=history),
-            "citations": citations_from_chunks(chunks),
-            "retrieved_chunks": [self._chunk_trace(chunk) for chunk in chunks],
-            "tool_calls": [*state.get("tool_calls", []), "medical_education_search"],
-            "trace_steps": [
-                *state.get("trace_steps", []),
-                {
-                    "node": "medical_education",
-                    "tool": "medical_education_search",
-                    "retrieved_count": len(chunks),
-                    "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
-                },
-            ],
-        }
+        updates = self.medical_education_agent.run(
+            state["request"],
+            state.get("tool_calls", []),
+            state.get("trace_steps", []),
+        )
+        return {**state, **updates}
 
     def _retrieve_node(self, state: AgentState) -> AgentState:
-        request = state["request"]
-        started = time.perf_counter()
-        chunks = self.tools.document_search(
-            request.message,
-            workspace_id=request.workspace_id,
-            top_k=request.top_k,
+        updates = self.document_rag_agent.run(
+            state["request"],
+            state.get("tool_calls", []),
+            state.get("trace_steps", []),
         )
-        history = self.memory.load(request.session_id, request.workspace_id)
-        return {
-            **state,
-            "answer": self.llm.answer(question=request.message, chunks=chunks, history=history),
-            "citations": citations_from_chunks(chunks),
-            "retrieved_chunks": [self._chunk_trace(chunk) for chunk in chunks],
-            "tool_calls": [*state.get("tool_calls", []), "document_search"],
-            "trace_steps": [
-                *state.get("trace_steps", []),
-                {
-                    "node": "retrieve",
-                    "tool": "document_search",
-                    "top_k": request.top_k,
-                    "retrieved_count": len(chunks),
-                    "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
-                },
-            ],
-        }
+        return {**state, **updates}
 
     def _finalize_node(self, state: AgentState) -> AgentState:
         request = state["request"]
@@ -273,6 +233,7 @@ class CareMindAgent:
                     if self.llm.settings.nvidia_api_key
                     else "local-grounded-fallback"
                 ),
+                "langsmith_enabled": self.llm.settings.langsmith_enabled,
                 "retrieved_chunks": state.get("retrieved_chunks", []),
                 "steps": [
                     *state.get("trace_steps", []),
@@ -301,54 +262,32 @@ class CareMindAgent:
             return "cached_response"
         return state["route"]
 
-    def _route(self, message: str) -> Route:
-        lowered = message.lower()
-        direct_patterns = [
-            "is this caremind",
-            "what is caremind",
-            "who are you",
-            "what can you do",
-            "help",
-            "hello",
-            "hi",
-        ]
-        if any(pattern in lowered.strip(" ?!.") for pattern in direct_patterns):
-            return "direct"
-        if len(lowered.split()) < 3 and "?" not in lowered:
-            return "clarify"
-        if any(term in lowered for term in ["compare", "changed", "difference", "trend", "versus", "vs "]):
-            return "compare"
-        education_terms = [
-            "what is",
-            "explain",
-            "symptoms",
-            "causes",
-            "treatment",
-            "guideline",
-            "general",
-            "education",
-            "pneumonia",
-            "diabetes",
-            "hypertension",
-            "anemia",
-            "chest pain",
-        ]
-        if any(term in lowered for term in education_terms) and not any(
-            term in lowered for term in ["report", "document", "uploaded", "evidence supports", "key findings"]
-        ):
-            return "medical_education"
-        return "retrieve"
-
     def _cache_key(self, request: ChatRequest, route: str) -> str:
-        raw = f"{route}|{request.workspace_id}|{request.message.strip().lower()}|{request.top_k}"
+        workspace_revision = self.tools.store.workspace_revision(request.workspace_id)
+        raw = (
+            f"v4|{route}|{request.workspace_id}|{workspace_revision}|"
+            f"{request.message.strip().lower()}|{request.top_k}"
+        )
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
-    def _chunk_trace(self, chunk) -> dict:
+    def _run_config(self, request: ChatRequest) -> dict:
         return {
-            "chunk_id": chunk.chunk_id,
-            "document_id": chunk.document_id,
-            "document_name": chunk.document_name,
-            "page": chunk.page,
-            "score": chunk.score,
-            "preview": chunk.text[:500],
+            "run_name": "CareMindAgent",
+            "tags": [
+                "caremind",
+                f"env:{self.llm.settings.environment}",
+                f"workspace:{request.workspace_id}",
+            ],
+            "metadata": {
+                "app": self.llm.settings.app_name,
+                "app_version": self.llm.settings.app_version,
+                "environment": self.llm.settings.environment,
+                "workspace_id": request.workspace_id,
+                "session_id": request.session_id,
+                "top_k": request.top_k,
+                "langsmith_enabled": self.llm.settings.langsmith_enabled,
+            },
+            "configurable": {
+                "thread_id": f"{request.workspace_id}:{request.session_id}",
+            },
         }

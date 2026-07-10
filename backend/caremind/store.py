@@ -1,3 +1,4 @@
+import hashlib
 import json
 import sqlite3
 from contextlib import contextmanager
@@ -195,6 +196,55 @@ class SQLiteStore:
                 )
             )
         return vectors
+
+    def workspace_revision(self, workspace_id: str) -> str:
+        digest = hashlib.sha256()
+        with self.connect() as conn:
+            document_rows = conn.execute(
+                """
+                select document_id, filename, uploaded_at, chunk_count, coalesce(summary, '') as summary
+                from documents
+                where workspace_id = ?
+                order by document_id
+                """,
+                (workspace_id,),
+            ).fetchall()
+            chunk_rows = conn.execute(
+                """
+                select chunk_id, document_id, position, coalesce(text, '') as text
+                from chunks
+                where workspace_id = ?
+                order by document_id, position, chunk_id
+                """,
+                (workspace_id,),
+            ).fetchall()
+
+        for row in document_rows:
+            digest.update(
+                json.dumps(
+                    {
+                        "document_id": row["document_id"],
+                        "filename": row["filename"],
+                        "uploaded_at": row["uploaded_at"],
+                        "chunk_count": row["chunk_count"],
+                        "summary": row["summary"],
+                    },
+                    sort_keys=True,
+                ).encode("utf-8")
+            )
+        for row in chunk_rows:
+            digest.update(
+                json.dumps(
+                    {
+                        "chunk_id": row["chunk_id"],
+                        "document_id": row["document_id"],
+                        "position": row["position"],
+                        "text": row["text"],
+                    },
+                    sort_keys=True,
+                ).encode("utf-8")
+            )
+        return digest.hexdigest()
 
     def append_message(self, session_id: str, workspace_id: str, role: str, content: str) -> None:
         with self.connect() as conn:

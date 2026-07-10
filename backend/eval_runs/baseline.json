@@ -261,7 +261,7 @@
   },
   "decision": {
     "status": "PASS",
-    "message": "Compared against eval_runs\\baseline.json.",
+    "message": "Compared against backend\\eval_runs\\baseline.json.",
     "metrics": {
       "route_accuracy": {
         "current": 1.0,

@@ -7,11 +7,11 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from app import app, get_services
+from backend.app import app, get_services
 
 
-REPORTS_DIR = Path("eval_reports/ragas")
-DEFAULT_CASES_PATH = Path("ragas_questions.jsonl")
+REPORTS_DIR = Path(__file__).resolve().parent / "eval_reports" / "ragas"
+DEFAULT_CASES_PATH = Path(__file__).with_name("ragas_questions.jsonl")
 STOPWORDS = {
     "a",
     "an",

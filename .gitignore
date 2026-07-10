@@ -1,4 +1,5 @@
 .env
+.venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -6,5 +7,6 @@ data/caremind.db
 data/uploads/
 caremind-server*.log
 eval_reports/
+backend/eval_reports/
 vscode-extension/node_modules/
 vscode-extension/out/

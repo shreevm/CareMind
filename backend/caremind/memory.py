@@ -9,6 +9,7 @@ class ConversationMemory:
     def __init__(self, settings: Settings, sqlite_store: SQLiteStore):
         self.settings = settings
         self.sqlite_store = sqlite_store
+        self.redis_error: str | None = None
         self._redis = self._connect_redis()
 
     def load(self, session_id: str, workspace_id: str, limit: int = 20) -> list[ChatMessage]:
@@ -54,6 +55,14 @@ class ConversationMemory:
             json.dumps(value),
         )
 
+    def cache_clear_workspace(self, workspace_id: str) -> int:
+        if self._redis is None:
+            return 0
+        keys = list(self._redis.scan_iter(self._cache_key(workspace_id, "*")))
+        if not keys:
+            return 0
+        return int(self._redis.delete(*keys))
+
     @property
     def redis_enabled(self) -> bool:
         return self._redis is not None
@@ -70,6 +79,8 @@ class ConversationMemory:
 
             client = redis.from_url(self.settings.redis_dsn, decode_responses=True)
             client.ping()
+            self.redis_error = None
             return client
-        except Exception:
+        except Exception as exc:
+            self.redis_error = exc.__class__.__name__
             return None

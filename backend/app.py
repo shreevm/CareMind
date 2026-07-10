@@ -8,18 +8,18 @@ from fastapi.responses import FileResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 
-from caremind.agent import CareMindAgent
-from caremind.config import Settings, get_settings
-from caremind.embeddings import EmbeddingClient
-from caremind.ingestion import DocumentIngestionService
-from caremind.llm import LLMClient
-from caremind.memory import ConversationMemory
-from caremind.metrics import metrics
-from caremind.safety import SafetyLayer
-from caremind.schemas import ChatRequest, ChatResponse, CompareRequest, CompareResponse, SearchResponse
-from caremind.store import SQLiteStore
-from caremind.tools import DocumentTools
-from caremind.vectorstore import VectorStore
+from backend.caremind.agent import CareMindAgent
+from backend.caremind.config import Settings, get_settings
+from backend.caremind.embeddings import EmbeddingClient
+from backend.caremind.ingestion import DocumentIngestionService
+from backend.caremind.llm import LLMClient
+from backend.caremind.memory import ConversationMemory
+from backend.caremind.metrics import metrics
+from backend.caremind.safety import SafetyLayer
+from backend.caremind.schemas import ChatRequest, ChatResponse, CompareRequest, CompareResponse, SearchResponse
+from backend.caremind.store import SQLiteStore
+from backend.caremind.tools import DocumentTools
+from backend.caremind.vectorstore import VectorStore
 
 
 
@@ -88,7 +88,7 @@ async def collect_metrics(request, call_next):
     )
     return response
 
-web_dir = Path(__file__).parent / "web"
+web_dir = Path(__file__).resolve().parent.parent / "frontend"
 if web_dir.exists():
     app.mount("/static", StaticFiles(directory=web_dir), name="static")
 
@@ -109,14 +109,26 @@ def favicon() -> Response:
 @app.get("/health")
 def health(settings: Annotated[Settings, Depends(get_settings)]) -> dict:
     services = get_services()
+    pinecone = services.vectorstore.pinecone_status()
     return {
         "status": "ok",
         "app": settings.app_name,
         "version": settings.app_version,
-        "vector_backend": "pinecone" if settings.should_use_pinecone else "local",
+        "vector_backend": "pinecone" if pinecone["configured"] else "local",
+        "pinecone": pinecone,
         "llm": settings.nvidia_chat_model if settings.nvidia_api_key else "local-grounded-fallback",
+        "medical_llm": (
+            settings.medical_llm_model
+            if settings.medical_llm_base_url and settings.medical_llm_model
+            else "same-as-main-llm"
+        ),
+        "medical_llm_configured": bool(settings.medical_llm_base_url and settings.medical_llm_model),
         "embeddings": settings.nvidia_embedding_model if settings.nvidia_api_key else "local-hashing-fallback",
         "redis": "connected" if services.memory.redis_enabled else "fallback-sqlite",
+        "redis_configured": bool(settings.redis_url or settings.redis_host),
+        "redis_error": services.memory.redis_error,
+        "langsmith": "enabled" if settings.langsmith_enabled else "disabled",
+        "langsmith_project": settings.langchain_project if settings.langsmith_enabled else None,
     }
 
 
@@ -131,7 +143,9 @@ async def upload_document(
     file: Annotated[UploadFile, File(...)],
     workspace_id: Annotated[str, Form()] = "default",
 ):
-    return await services.ingestion.ingest_upload(file, workspace_id=workspace_id)
+    document = await services.ingestion.ingest_upload(file, workspace_id=workspace_id)
+    services.memory.cache_clear_workspace(workspace_id)
+    return document
 
 
 @app.get("/documents")
@@ -140,6 +154,19 @@ def list_documents(
     workspace_id: str = "default",
 ):
     return services.store.list_documents(workspace_id)
+
+
+@app.delete("/cache")
+def clear_cache(
+    services: Annotated[Services, Depends(get_services)],
+    workspace_id: str = "default",
+) -> dict:
+    deleted = services.memory.cache_clear_workspace(workspace_id)
+    return {
+        "workspace_id": workspace_id,
+        "redis_enabled": services.memory.redis_enabled,
+        "deleted": deleted,
+    }
 
 
 @app.post("/chat", response_model=ChatResponse)
@@ -208,10 +235,11 @@ def seed_demo(
         ),
         workspace_id=workspace_id,
     )
+    services.memory.cache_clear_workspace(workspace_id)
     return {"documents": [first, second]}
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("backend.app:app", host="127.0.0.1", port=8000, reload=True)

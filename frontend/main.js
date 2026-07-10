@@ -102,130 +102,6 @@ function appendInlineCitations(parent, text, citations) {
   }
 }
 
-function evidenceText(data) {
-  return [data.answer, ...(data.citations || []).map((citation) => citation.quote || "")]
-    .join("\n")
-    .replace(/\s+/g, " ");
-}
-
-function firstMatch(text, patterns) {
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match) return (match[1] || match[2] || "").trim().replace(/[.;,]$/, "");
-  }
-  return "";
-}
-
-function extractPatientProfile(question, data) {
-  const text = evidenceText(data);
-  const reportMatch = text.match(
-    /\bReport for\s+(.+?)\s+ID\s+([A-Za-z0-9-]+)\s+Age\s+(\d{1,3}\s*(?:yrs?|years?)?)\s+Gender\s+([A-Za-z-]+)/i
-  );
-  if (reportMatch) {
-    return {
-      Name: reportMatch[1].trim(),
-      ID: reportMatch[2].trim(),
-      Age: reportMatch[3].trim(),
-      Gender: reportMatch[4].trim(),
-    };
-  }
-
-  const profile = {
-    Name: firstMatch(text, [
-      /\bpatient name\s*[:=-]\s*([A-Za-z ,.'-]+)/i,
-      /\bname\s*[:=-]\s*([A-Za-z ,.'-]+)/i,
-      /\bpatient\s*[:=-]\s*([A-Za-z ,.'-]+)/i,
-    ]),
-    ID: firstMatch(text, [/\b(?:patient id|mrn|medical record(?: number)?|id)\s*[:#=-]?\s*([A-Za-z0-9-]+)/i]),
-    Age: firstMatch(text, [/\bage\s*[:=-]?\s*(\d{1,3})\b/i, /\b(\d{1,3})[- ]year[- ]old\b/i]),
-    Gender: firstMatch(text, [/\b(?:gender|sex)\s*[:=-]?\s*(male|female|man|woman|nonbinary|non-binary|other)\b/i]),
-  };
-  const hasValue = Object.values(profile).some(Boolean);
-  return hasValue ? profile : null;
-}
-
-function extractFindings(data) {
-  const text = evidenceText(data);
-  const rows = [];
-  const patterns = [
-    { metric: "Maximum heart rate", regex: /\b(?:max|maximum)\s+hr\s*(?:[:=]|~)?\s*(\d+\s*bpm)\b/gi },
-    { metric: "Average heart rate", regex: /\b(?:avg|average)\s+hr\s*(?:[:=]|~)?\s*(\d+\s*bpm)\b/gi },
-    { metric: "Minimum heart rate", regex: /\b(?:min|minimum)\s+hr\s*(?:[:=]|~)?\s*(\d+\s*bpm)\b/gi },
-    { metric: "Hemoglobin", regex: /\bhemoglobin\s*(?:is|=|:)?\s*(\d+(?:\.\d+)?\s*g\/dL)\b/gi },
-    { metric: "White blood cell count", regex: /\b(?:white blood cell count|wbc)\s*(?:is|=|:)?\s*(\d+(?:\.\d+)?)\b/gi },
-    { metric: "Ventricular ectopics", regex: /\bventricular ectopic(?:s|\s*\(?ve\)?)?\s*(?:count|counts|beats|=|:)?\s*([0-9,]+(?:\s*beats?)?)\b/gi },
-    { metric: "Supraventricular ectopics", regex: /\bsupraventricular ectopic(?:s|\s*\(?sve\)?)?\s*(?:count|counts|beats|=|:)?\s*([0-9,]+(?:\s*beats?)?)\b/gi },
-    { metric: "Sinus tachycardia", regex: /\bsinus tachycardia(?:\s+avg\s+hr\s*=\s*(\d+\s*bpm))?/gi },
-    { metric: "Sinus rhythm", regex: /\bsinus rhythm(?:\s+avg\s+hr\s*=\s*(\d+\s*bpm))?/gi },
-  ];
-  for (const pattern of patterns) {
-    for (const match of text.matchAll(pattern.regex)) {
-      rows.push({ metric: pattern.metric, value: (match[1] || "Present").trim() });
-    }
-  }
-  const ectopicTotal = text.match(/\bVentricular\s+Supraventricular\s+Total\s+([0-9,]+)\s+([0-9,]+)/i);
-  if (ectopicTotal) {
-    rows.push({ metric: "Ventricular ectopics", value: ectopicTotal[1] });
-    rows.push({ metric: "Supraventricular ectopics", value: ectopicTotal[2] });
-  }
-  const seen = new Set();
-  return rows.filter((row) => {
-    const key = `${row.metric}:${row.value}`.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).slice(0, 8);
-}
-
-function renderPatientProfile(container, profile) {
-  if (!profile) return;
-  const card = document.createElement("section");
-  card.className = "patient-card";
-  const title = document.createElement("div");
-  title.className = "structured-title";
-  title.textContent = "Patient Profile";
-  const grid = document.createElement("div");
-  grid.className = "patient-grid";
-  for (const [label, value] of Object.entries(profile)) {
-    const field = document.createElement("div");
-    field.className = "patient-field";
-    const key = document.createElement("span");
-    key.textContent = label;
-    const val = document.createElement("strong");
-    val.textContent = value || "Not found";
-    field.append(key, val);
-    grid.appendChild(field);
-  }
-  card.append(title, grid);
-  container.appendChild(card);
-}
-
-function renderFindingsTable(container, rows) {
-  if (!rows.length) return;
-  const card = document.createElement("section");
-  card.className = "findings-card";
-  const title = document.createElement("div");
-  title.className = "structured-title";
-  title.textContent = "Key Findings";
-  const table = document.createElement("table");
-  table.className = "findings-table";
-  const head = document.createElement("thead");
-  head.innerHTML = "<tr><th>Parameter</th><th>Value</th></tr>";
-  const body = document.createElement("tbody");
-  for (const row of rows) {
-    const tr = document.createElement("tr");
-    const metric = document.createElement("td");
-    metric.textContent = row.metric;
-    const value = document.createElement("td");
-    value.textContent = row.value;
-    tr.append(metric, value);
-    body.appendChild(tr);
-  }
-  table.append(head, body);
-  card.append(title, table);
-  container.appendChild(card);
-}
-
 function renderReferences(container, citations) {
   if (!citations?.length) return;
   const refs = document.createElement("div");
@@ -305,6 +181,44 @@ function renderTrace(container, trace, data) {
   container.appendChild(details);
 }
 
+function renderAnswerText(container, answer, citations) {
+  const blocks = answer.split(/\n{2,}/).map((item) => item.trim()).filter(Boolean);
+  for (const block of blocks) {
+    const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
+    let index = 0;
+    while (index < lines.length) {
+      const line = lines[index];
+      const heading = /^[A-Za-z][A-Za-z0-9 /&()-]{1,60}:$/.test(line);
+      if (heading) {
+        const title = document.createElement("h3");
+        title.className = "response-heading";
+        title.textContent = line.replace(/:$/, "");
+        container.appendChild(title);
+        index += 1;
+        continue;
+      }
+
+      if (!/^[-*]\s+/.test(line)) {
+        const paragraph = document.createElement("p");
+        appendInlineCitations(paragraph, line, citations);
+        container.appendChild(paragraph);
+        index += 1;
+        continue;
+      }
+
+      const list = document.createElement("ul");
+      list.className = "response-list";
+      while (index < lines.length && /^[-*]\s+/.test(lines[index])) {
+        const item = document.createElement("li");
+        appendInlineCitations(item, lines[index].replace(/^[-*]\s+/, ""), citations);
+        list.appendChild(item);
+        index += 1;
+      }
+      container.appendChild(list);
+    }
+  }
+}
+
 function renderAssistantResponse(node, data, question) {
   try {
     node.className = "message assistant";
@@ -313,26 +227,7 @@ function renderAssistantResponse(node, data, question) {
     content.className = "response-content";
     const citations = data.citations || [];
 
-    const profile = extractPatientProfile(question, data);
-    const findingRows = extractFindings(data);
-    renderPatientProfile(content, profile);
-    renderFindingsTable(content, findingRows);
-
-    const paragraphs = data.answer.split(/\n{2,}/).map((item) => item.trim()).filter(Boolean);
-    for (const paragraph of paragraphs) {
-      if (profile && /^patient profile:/i.test(paragraph)) {
-        continue;
-      }
-      if (findingRows.length && /^(key findings|rhythm\/heart-rate evidence noted)/i.test(paragraph)) {
-        continue;
-      }
-      if (/^patient\/manual event evidence:?$/i.test(paragraph)) {
-        continue;
-      }
-      const p = document.createElement("p");
-      appendInlineCitations(p, paragraph.replace(/^- /gm, ""), citations);
-      content.appendChild(p);
-    }
+    renderAnswerText(content, data.answer || "", citations);
 
     renderReferences(content, citations);
     renderTrace(content, data.trace, data);

@@ -1,0 +1,24 @@
+[project]
+name = "caremind"
+version = "0.4.0"
+description = "Agentic RAG assistant for medical and research documents."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+    "pydantic",
+    "pydantic-settings",
+    "httpx",
+    "langgraph",
+    "python-dotenv",
+    "redis",
+    "pinecone",
+    "pypdf",
+    "pytest",
+    "ragas",
+]
+
+[tool.uv] 
+package = false

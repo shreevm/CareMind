@@ -1,4 +1,5 @@
 from functools import lru_cache
+import os
 from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -23,6 +24,9 @@ class Settings(BaseSettings):
         alias="NVIDIA_CHAT_MODEL",
     )
     nvidia_embedding_model: str = Field(default="nvolveqa_40k", alias="NVIDIA_EMBEDDING_MODEL")
+    medical_llm_base_url: str | None = Field(default=None, alias="MEDICAL_LLM_BASE_URL")
+    medical_llm_api_key: str | None = Field(default=None, alias="MEDICAL_LLM_API_KEY")
+    medical_llm_model: str | None = Field(default=None, alias="MEDICAL_LLM_MODEL")
 
     pinecone_api_key: str | None = Field(default=None, alias="PINECONE_API_KEY")
     pinecone_index_name: str = Field(default="caremind-index", alias="PINECONE_INDEX_NAME")
@@ -40,6 +44,11 @@ class Settings(BaseSettings):
     basic_auth_username: str | None = Field(default=None, alias="CAREMIND_USERNAME")
     basic_auth_password: str | None = Field(default=None, alias="CAREMIND_PASSWORD")
 
+    langchain_tracing_v2: bool = Field(default=False, alias="LANGCHAIN_TRACING_V2")
+    langchain_api_key: str | None = Field(default=None, alias="LANGCHAIN_API_KEY")
+    langchain_project: str = Field(default="caremind-dev", alias="LANGCHAIN_PROJECT")
+    langchain_endpoint: str | None = Field(default=None, alias="LANGCHAIN_ENDPOINT")
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @property
@@ -53,6 +62,19 @@ class Settings(BaseSettings):
         password = f":{self.redis_password}@" if self.redis_password else ""
         return f"redis://{password}{self.redis_host}:{self.redis_port}/0"
 
+    @property
+    def langsmith_enabled(self) -> bool:
+        return self.langchain_tracing_v2 and bool(self.langchain_api_key)
+
+    def apply_langsmith_environment(self) -> None:
+        os.environ["LANGCHAIN_TRACING_V2"] = "true" if self.langsmith_enabled else "false"
+        if not self.langsmith_enabled:
+            return
+        os.environ["LANGCHAIN_API_KEY"] = self.langchain_api_key or ""
+        os.environ["LANGCHAIN_PROJECT"] = self.langchain_project
+        if self.langchain_endpoint:
+            os.environ["LANGCHAIN_ENDPOINT"] = self.langchain_endpoint
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
@@ -60,4 +82,5 @@ def get_settings() -> Settings:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.upload_dir.mkdir(parents=True, exist_ok=True)
     settings.sqlite_path.parent.mkdir(parents=True, exist_ok=True)
+    settings.apply_langsmith_environment()
     return settings

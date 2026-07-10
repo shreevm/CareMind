@@ -11,6 +11,10 @@ SYSTEM_PROMPT = """You are CareMind, an agentic RAG assistant for medical and re
 Answer only from the provided evidence. Include concise clinical language, note uncertainty,
 and never claim to diagnose or prescribe. Cite evidence using bracketed citation numbers."""
 
+MEDICAL_SYSTEM_PROMPT = """You are CareMind's medical education specialist.
+Use the provided education evidence first, answer in plain clinical language, and explain uncertainty.
+Do not diagnose, prescribe, or replace a clinician. Cite evidence using bracketed citation numbers."""
+
 
 class LLMClient:
     def __init__(self, settings: Settings):
@@ -30,6 +34,28 @@ class LLMClient:
                 pass
         return self._answer_locally(question=question, chunks=chunks)
 
+    def answer_medical(
+        self,
+        *,
+        question: str,
+        chunks: list[RetrievedChunk],
+        history: list[ChatMessage],
+    ) -> str:
+        if self.settings.medical_llm_base_url and self.settings.medical_llm_model:
+            try:
+                return self._answer_with_chat_endpoint(
+                    question=question,
+                    chunks=chunks,
+                    history=history,
+                    base_url=self.settings.medical_llm_base_url,
+                    model=self.settings.medical_llm_model,
+                    api_key=self.settings.medical_llm_api_key,
+                    system_prompt=MEDICAL_SYSTEM_PROMPT,
+                )
+            except Exception:
+                pass
+        return self.answer(question=question, chunks=chunks, history=history)
+
     def _answer_with_nvidia(
         self,
         *,
@@ -37,12 +63,33 @@ class LLMClient:
         chunks: list[RetrievedChunk],
         history: list[ChatMessage],
     ) -> str:
+        return self._answer_with_chat_endpoint(
+            question=question,
+            chunks=chunks,
+            history=history,
+            base_url=self.settings.nvidia_base_url,
+            model=self.settings.nvidia_chat_model,
+            api_key=self.settings.nvidia_api_key,
+            system_prompt=SYSTEM_PROMPT,
+        )
+
+    def _answer_with_chat_endpoint(
+        self,
+        *,
+        question: str,
+        chunks: list[RetrievedChunk],
+        history: list[ChatMessage],
+        base_url: str,
+        model: str,
+        api_key: str | None,
+        system_prompt: str,
+    ) -> str:
         evidence = "\n\n".join(
             f"[{index}] {chunk.document_name}"
             f"{' page ' + str(chunk.page) if chunk.page else ''}: {chunk.text}"
             for index, chunk in enumerate(chunks, start=1)
         )
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        messages = [{"role": "system", "content": system_prompt}]
         for item in history[-6:]:
             if item.role in {"user", "assistant"}:
                 messages.append({"role": item.role, "content": item.content})
@@ -52,17 +99,19 @@ class LLMClient:
                 "content": (
                     f"Question: {question}\n\n"
                     f"Evidence:\n{evidence or 'No retrieved evidence.'}\n\n"
+                    f"{self._response_instructions(question)}\n"
                     "Return a concise answer with citations such as [1]."
                 ),
             }
         )
-        url = f"{self.settings.nvidia_base_url.rstrip('/')}/chat/completions"
+        url = f"{base_url.rstrip('/')}/chat/completions"
         headers = {
-            "Authorization": f"Bearer {self.settings.nvidia_api_key}",
             "Content-Type": "application/json",
         }
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
         payload = {
-            "model": self.settings.nvidia_chat_model,
+            "model": model,
             "messages": messages,
             "temperature": 0.2,
             "max_tokens": 700,
@@ -114,23 +163,24 @@ class LLMClient:
             ]
         )
 
+    def _response_instructions(self, question: str) -> str:
+        if not self._asks_for_clinical_summary(question):
+            return ""
+        return (
+            "For key-finding or patient-summary questions, structure the answer as Patient, Study, "
+            "Heart Rate, Key Findings, Ectopics, and Overall/Clinical Context when the evidence supports it. "
+            "Use short prose and bullet lists. Do not use markdown tables, HTML tables, or Parameter/Value tables. "
+            "Do not use markdown formatting, bold text, or asterisks. Use plain headings like Patient Details:"
+            "If this is a Holter/ECG report, distinguish the overall max/average/min heart rate from rhythm-table "
+            "Avg HR entries. Do not list every rhythm-row average heart rate as a separate key finding. "
+            "Highlight major positives and negatives such as SVT/VT/AF/AV block/pauses, symptom events, and ectopic burden."
+        )
+
     def _clinical_summary_answer(self, chunks: list[RetrievedChunk]) -> str:
         evidence_texts = [clean_evidence_text(chunk.text) for chunk in chunks]
         combined = "\n".join(evidence_texts)
         patient_profile = self._extract_patient_profile(combined)
-        findings = self._extract_clinical_findings(evidence_texts)
-        rhythm_terms = self._extract_unique_matches(
-            combined,
-            [
-                r"Sinus Tachycardia(?:\s+Avg HR\s*=\s*\d+\s*bpm)?",
-                r"Sinus Bradycardia(?:\s+Avg HR\s*=\s*\d+\s*bpm)?",
-                r"Sinus Rhythm(?:\s+Avg HR\s*=\s*\d+\s*bpm)?",
-                r"Ventricular Ectopic \(?VE\)?",
-                r"Supraventricular Ectopic \(?SVE\)?",
-                r"Avg HR\s*=\s*\d+\s*bpm",
-                r"\b\d+\s*bpm\b",
-            ],
-        )
+        findings = self._extract_holter_findings(combined) or self._extract_clinical_findings(evidence_texts)
         triggered = self._extract_unique_matches(
             combined,
             [
@@ -160,12 +210,6 @@ class LLMClient:
         else:
             lines.append("- I found rhythm-monitoring entries, but the extracted PDF text does not include a clear final impression section. [1]")
 
-        if rhythm_terms:
-            lines.append("")
-            lines.append("Rhythm/heart-rate evidence noted in the report:")
-            for term in rhythm_terms[:6]:
-                lines.append(f"- {term} [1]")
-
         if triggered:
             lines.append("")
             lines.append("Patient/manual event evidence:")
@@ -180,6 +224,137 @@ class LLMClient:
             ]
         )
         return "\n".join(lines)
+
+    def _extract_holter_findings(self, text: str) -> list[str]:
+        compact = re.sub(r"\s+", " ", text).strip()
+        lowered = compact.lower()
+        if not any(term in lowered for term in ["holter", "ecg", "sinus", "svt", "ectopic", "heart rate", "hr"]):
+            return []
+
+        findings: list[str] = []
+
+        max_hr = self._first_match(
+            compact,
+            [
+                r"\b(?:max|maximum)(?:imum)?(?:\s+(?:heart\s+rate|hr))?\s*(?:[:=]|~|-)?\s*(\d+\s*bpm)\b",
+            ],
+        )
+        avg_hr = self._first_match(
+            compact,
+            [
+                r"\b(?:avg|average)(?:\s+(?:heart\s+rate|hr))?\s*(?:[:=]|~|-)?\s*(\d+\s*bpm)\b",
+            ],
+        )
+        min_hr = self._first_match(
+            compact,
+            [
+                r"\b(?:min|minimum)(?:\s+(?:heart\s+rate|hr))?\s*(?:[:=]|~|-)?\s*(\d+\s*bpm)\b",
+            ],
+        )
+        heart_rate_parts = []
+        if max_hr:
+            heart_rate_parts.append(f"maximum {max_hr}")
+        if avg_hr:
+            heart_rate_parts.append(f"average {avg_hr}")
+        if min_hr:
+            heart_rate_parts.append(f"minimum {min_hr}")
+        if heart_rate_parts:
+            findings.append("Overall heart rate: " + ", ".join(heart_rate_parts) + ".")
+
+        if re.search(r"\bsinus rhythm\b", compact, flags=re.IGNORECASE):
+            findings.append("Baseline/recorded rhythm includes sinus rhythm.")
+
+        svt_count = self._first_match(
+            compact,
+            [
+                r"\b(\d+)\s+episodes?\s+of\s+SVT\b",
+                r"\bSVT\s+episodes?\D{0,40}(\d+)\b",
+            ],
+        )
+        if svt_count:
+            svt_detail = self._first_match(
+                compact,
+                [
+                    r"\bSVT\b.{0,80}?(\d+\s*bpm.{0,40}?\d+(?:\.\d+)?\s*(?:secs?|seconds?))",
+                    r"(\d+\s*bpm.{0,40}?\d+(?:\.\d+)?\s*(?:secs?|seconds?)).{0,40}?\bSVT\b",
+                ],
+            )
+            detail = f" ({svt_detail})" if svt_detail else ""
+            findings.append(f"SVT noted: {svt_count} episode(s){detail}.")
+        elif re.search(r"\bSVT\b|supraventricular tachycardia", compact, flags=re.IGNORECASE):
+            findings.append("Supraventricular tachycardia/SVT is mentioned in the report.")
+
+        if re.search(r"\bsinus tachycardia\b", compact, flags=re.IGNORECASE):
+            tachy_hr = self._first_match(compact, [r"\bsinus tachycardia\b.{0,60}?(\d+\s*bpm)"])
+            findings.append(f"Sinus tachycardia is noted{f' around {tachy_hr}' if tachy_hr else ''}.")
+
+        ventricular, supraventricular = self._extract_ectopic_counts(compact)
+        ectopic_parts = []
+        if ventricular:
+            ectopic_parts.append(f"ventricular ectopics {ventricular}")
+        if supraventricular:
+            ectopic_parts.append(f"supraventricular ectopics {supraventricular}")
+        if ectopic_parts:
+            findings.append("Ectopic burden/counts: " + "; ".join(ectopic_parts) + ".")
+        elif re.search(r"\bectopic", compact, flags=re.IGNORECASE):
+            findings.append("Ectopic beats are mentioned; use the source report for exact burden/counts.")
+
+        negatives = []
+        negative_patterns = [
+            ("VT", r"\bno\s+(?:vt|ventricular tachycardia)\b"),
+            ("AF", r"\bno\s+(?:af|atrial fibrillation)\b"),
+            ("advanced AV block", r"\bno\s+(?:advanced\s+)?av blocks?\b"),
+            ("pauses", r"\bno\s+pauses?\b"),
+        ]
+        for label, pattern in negative_patterns:
+            if re.search(pattern, compact, flags=re.IGNORECASE):
+                negatives.append(label)
+        if negatives:
+            findings.append("No " + ", ".join(negatives) + " reported.")
+
+        if re.search(r"\bno symptoms?\b|\bno patient triggered\b|\bno manual\b", compact, flags=re.IGNORECASE):
+            findings.append("No patient symptoms/manual events are documented in the retrieved evidence.")
+
+        return self._dedupe_findings(findings)
+
+    def _extract_ectopic_counts(self, text: str) -> tuple[str, str]:
+        table_match = re.search(
+            r"\bVentricular\s+Supraventricular\s+Total\s+([0-9,]+)\s+([0-9,]+)",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if table_match:
+            return table_match.group(1), table_match.group(2)
+        ventricular = self._first_match(
+            text,
+            [
+                r"\bventricular(?:\s+ectopic(?:s|\s*\(?ve\)?)?)?\s*[:=-]?\s*([0-9,]+)\s*(?:total|beats?)\b",
+            ],
+        )
+        supraventricular = self._first_match(
+            text,
+            [
+                r"\bsupraventricular(?:\s+ectopic(?:s|\s*\(?sve\)?)?)?\s*[:=-]?\s*([0-9,]+)\s*(?:total|beats?)\b",
+            ],
+        )
+        return ventricular, supraventricular
+
+    def _first_match(self, text: str, patterns: list[str]) -> str:
+        for pattern in patterns:
+            match = re.search(pattern, text, flags=re.IGNORECASE)
+            if match:
+                return match.group(1).strip().rstrip(".,;")
+        return ""
+
+    def _dedupe_findings(self, findings: list[str]) -> list[str]:
+        deduped = []
+        seen = set()
+        for finding in findings:
+            key = finding.lower()
+            if key not in seen:
+                seen.add(key)
+                deduped.append(finding)
+        return deduped
 
     def _extract_patient_profile(self, text: str) -> dict[str, str]:
         compact = re.sub(r"\s+", " ", text).strip()

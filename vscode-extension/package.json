@@ -7,8 +7,13 @@
   "engines": {
     "vscode": "^1.90.0"
   },
-  "categories": ["Other"],
-  "activationEvents": ["*", "onView:caremind.chatView"],
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "*",
+    "onView:caremind.chatView"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "configuration": {
@@ -44,7 +49,7 @@
     "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
-    "@types/node": "^20.11.30",
+    "@types/node": "^20.19.43",
     "@types/vscode": "^1.90.0",
     "typescript": "^5.4.5"
   }

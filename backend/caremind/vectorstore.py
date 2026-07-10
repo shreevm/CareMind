@@ -86,6 +86,29 @@ class VectorStore:
         scored.sort(key=lambda item: item[0], reverse=True)
         return [chunk.model_copy(update={"score": score}) for score, chunk in scored[:top_k]]
 
+    def pinecone_status(self) -> dict[str, Any]:
+        if not self.settings.should_use_pinecone:
+            return {"configured": False, "connected": False, "index_exists": False}
+        try:
+            from pinecone import Pinecone
+
+            pc = Pinecone(api_key=self.settings.pinecone_api_key)
+            existing = [index["name"] if isinstance(index, dict) else index.name for index in pc.list_indexes()]
+            return {
+                "configured": True,
+                "connected": True,
+                "index_exists": self.settings.pinecone_index_name in existing,
+                "index_name": self.settings.pinecone_index_name,
+            }
+        except Exception as exc:
+            return {
+                "configured": True,
+                "connected": False,
+                "index_exists": False,
+                "index_name": self.settings.pinecone_index_name,
+                "error": exc.__class__.__name__,
+            }
+
     def _get_pinecone_index(self, dimension: int):
         if self._pinecone_index is not None:
             return self._pinecone_index

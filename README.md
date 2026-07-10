@@ -1,6 +1,6 @@
 # CareMind MVP
 
-CareMind is a LangGraph-powered agentic RAG assistant for medical and research documents. It supports PDF/text upload, document search, cited answers, report comparison, session memory, and a shared backend for the browser UI and VS Code sidebar.
+CareMind is a LangGraph-powered multi-agent RAG assistant for medical and research documents. It supports PDF/text upload, document search, cited answers, report comparison, session memory, and a shared backend for the browser UI and VS Code sidebar.
 
 The app is built to use NVIDIA NIM endpoints and Pinecone when keys are configured. For local demos, it falls back to deterministic local embeddings, SQLite vector search, and SQLite-backed chat history.
 
@@ -9,15 +9,18 @@ The app is built to use NVIDIA NIM endpoints and Pinecone when keys are configur
 ```text
 Browser / VS Code
   -> FastAPI API
-  -> LangGraph CareMindAgent
-  -> route_query
+  -> LangGraph CareMindAgent orchestrator
+  -> SupervisorAgent
   -> check_cache
-  -> retrieval/tool node
-       - retrieve: document_search
-       - medical_education: medical_education_search
-       - compare: compare_reports
+  -> specialist agent
+       - DirectResponseAgent: product/help answers
+       - DocumentRAGAgent: uploaded-document retrieval
+       - MedicalEducationAgent: trusted education corpus retrieval
+       - ReportComparisonAgent: two-report comparison
+       - ClarificationAgent: missing-context questions
   -> LLM generation
        - NVIDIA chat model when NVIDIA_API_KEY is set
+       - optional medical LLM endpoint for MedicalEducationAgent
        - local grounded fallback when no key is set
   -> safety/disclaimer finalization
   -> cited response
@@ -42,7 +45,7 @@ Upload PDF/text
 Evaluation path:
 
 ```text
-ragas_questions.jsonl
+backend/ragas_questions.jsonl
   -> run CareMind retrieval
   -> run CareMind generation
   -> save RAGAS-shaped rows:
@@ -57,8 +60,8 @@ ragas_questions.jsonl
 ## Run Locally
 
 ```bash
-pip install -r requirements.txt
-python app.py
+uv sync
+uv run python backend/run_server.py
 ```
 
 Open `http://127.0.0.1:8000`.
@@ -70,15 +73,26 @@ NVIDIA_API_KEY=your_nvidia_key
 NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
 NVIDIA_CHAT_MODEL=meta/llama-3.1-8b-instruct
 NVIDIA_EMBEDDING_MODEL=nvolveqa_40k
+MEDICAL_LLM_BASE_URL=http://127.0.0.1:8001/v1
+MEDICAL_LLM_MODEL=google/medgemma-4b-it
+MEDICAL_LLM_API_KEY=
 PINECONE_API_KEY=your_pinecone_key
 PINECONE_INDEX_NAME=caremind-index
 CAREMIND_VECTOR_BACKEND=pinecone
 REDIS_URL=redis://localhost:6379/0
 CAREMIND_USERNAME=demo
 CAREMIND_PASSWORD=demo
+LANGCHAIN_TRACING_V2=false
+LANGCHAIN_API_KEY=
+LANGCHAIN_PROJECT=caremind-dev
+LANGCHAIN_ENDPOINT=
 ```
 
 Set `CAREMIND_VECTOR_BACKEND=local` for the keyless demo. Set it to `pinecone` after your Pinecone key is ready.
+
+`MEDICAL_LLM_BASE_URL` is optional. Use it when you are serving a Hugging Face medical model through an OpenAI-compatible server such as vLLM. Keep it on a different port than CareMind, for example `8001`, because CareMind uses `8000`.
+
+Set `LANGCHAIN_TRACING_V2=true` and provide `LANGCHAIN_API_KEY` to send LangGraph runs to LangSmith. Traces include graph inputs, outputs, tool results, and retrieved document snippets, so only enable this where the document/chat data is allowed to be sent to LangSmith.
 
 ## API
 
@@ -87,23 +101,25 @@ Set `CAREMIND_VECTOR_BACKEND=local` for the keyless demo. Set it to `pinecone` a
 - `POST /compare` compares two indexed reports.
 - `GET /search` returns retrieved chunks.
 - `GET /documents` lists workspace documents.
+- `DELETE /cache?workspace_id=default` clears cached chat responses for a workspace.
 - `POST /demo/seed` creates two synthetic reports for a quick demo.
 - `GET /metrics` returns request, route, tool, cache, and latency metrics.
 
-## Agent Routes
+## Multi-Agent Routes
 
-The backend chooses among:
+The backend uses a controlled supervisor-specialist pattern. `CareMindAgent` owns the LangGraph state machine, while specialist agents own narrow responsibilities:
 
-- `direct`: product/help questions such as `is this CareMind?`
-- `retrieve`: uploaded-document RAG with citations.
-- `compare`: report comparison tool.
-- `medical_education`: general medical education RAG over a small trusted built-in corpus.
-- `clarify`: asks for more context when the request is too vague.
+- `SupervisorAgent`: classifies each request into a route.
+- `DirectResponseAgent`: answers product/help questions such as `what do you do?`.
+- `DocumentRAGAgent`: runs uploaded-document RAG with citations.
+- `MedicalEducationAgent`: runs general medical education RAG over a small trusted built-in corpus.
+- `ReportComparisonAgent`: compares two indexed reports.
+- `ClarificationAgent`: asks for more context when the request is too vague.
 
-The router is implemented as a compiled LangGraph `StateGraph`:
+The agents are orchestrated as a compiled LangGraph `StateGraph`:
 
 ```text
-route -> check_cache -> direct | clarify | compare | medical_education | retrieve -> finalize
+SupervisorAgent -> check_cache -> specialist agent -> safety/citation finalization
 ```
 
 ## Redis Cache
@@ -114,6 +130,8 @@ Redis is used when `REDIS_URL` or Redis host settings are reachable. It stores:
 - exact response cache for retrieval, comparison, and medical education routes,
 - temporary agent state with `CAREMIND_SESSION_TTL`.
 
+Response cache keys include a revision hash of the workspace's indexed documents and chunks. If document rows or chunk text change in SQLite, the next chat request uses a fresh cache key and stores a new response. Uploads and demo seeding also clear old cached responses for that workspace.
+
 If Redis is unavailable, CareMind falls back to SQLite chat history and disables response cache.
 
 ## Evaluation
@@ -121,7 +139,7 @@ If Redis is unavailable, CareMind falls back to SQLite chat history and disables
 Run:
 
 ```bash
-python evaluate.py
+uv run python backend/evaluate.py
 ```
 
 The evaluator seeds demo reports and reports:
@@ -135,14 +153,14 @@ The evaluator seeds demo reports and reports:
 Run:
 
 ```bash
-python evaluate_ragas.py
+uv run python backend/evaluate_ragas.py
 ```
 
 This evaluates retrieval first and generation second. It writes:
 
-- `eval_reports/ragas/<timestamp>.json`
-- `eval_reports/ragas/<timestamp>.ragas_dataset.jsonl`
-- `eval_reports/ragas/<timestamp>.md`
+- `backend/eval_reports/ragas/<timestamp>.json`
+- `backend/eval_reports/ragas/<timestamp>.ragas_dataset.jsonl`
+- `backend/eval_reports/ragas/<timestamp>.md`
 
 The `.ragas_dataset.jsonl` file uses the standard RAGAS shape:
 
@@ -163,11 +181,10 @@ If `ragas` is not installed, the script still runs local diagnostics:
 - `route_accuracy`
 - `citation_pass_rate`
 
-For full RAGAS metrics, install dependencies and configure an evaluator LLM:
+For full RAGAS metrics, configure an evaluator LLM and run:
 
 ```bash
-pip install ragas
-python evaluate_ragas.py
+uv run python backend/evaluate_ragas.py
 ```
 
 Full RAGAS mode attempts:
