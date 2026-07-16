@@ -1,6 +1,6 @@
 # CareMind MVP
 
-CareMind is a LangGraph-powered multi-agent RAG assistant for medical and research documents. It supports PDF/text upload, document search, cited answers, report comparison, session memory, and a shared backend for the browser UI and VS Code sidebar.
+CareMind is a LangGraph-powered multi-agent RAG assistant for medical and research documents. It supports PDF/text upload, document search, cited answers, report comparison, session memory, and a shared backend for the browser UI .
 
 The app is built to use NVIDIA NIM endpoints and Pinecone when keys are configured. For local demos, it falls back to deterministic local embeddings, SQLite vector search, and SQLite-backed chat history.
 
