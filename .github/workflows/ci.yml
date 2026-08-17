@@ -32,7 +32,9 @@ jobs:
         run: uv run python -m compileall backend
 
       - name: Run backend tests
-        run: uv run pytest -p no:cacheprovider --basetemp .pytest-tmp/basetemp backend/tests --ignore=backend/tests/load_test.py
+        run: |
+          mkdir -p .pytest-tmp
+          uv run pytest -p no:cacheprovider --basetemp .pytest-tmp/basetemp backend/tests --ignore=backend/tests/load_test.py
 
   frontend:
     name: Frontend Build
