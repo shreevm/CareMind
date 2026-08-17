@@ -1,0 +1,8 @@
+
+        Medical Report:
+        Patient Name: John Doe
+        Age: 45
+        Chief Complaint: Back pain
+        Diagnosis: Herniated disc L4-L5
+        Treatment: Physical therapy, NSAIDs
+        
