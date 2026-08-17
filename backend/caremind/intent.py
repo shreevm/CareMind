@@ -145,6 +145,8 @@ def has_document_scope(message: str) -> bool:
     lowered = message.lower()
     if any(term in lowered for term in DOCUMENT_SCOPE_TERMS):
         return True
+    if re.search(r"\b(?:what\s+(?:were|are)\s+)?(?:the\s+)?(?:lab|blood|test)\s+results\b", lowered):
+        return True
     return bool(re.search(r"\b(mr|mrs|ms|miss|patient)\.?\s+[a-z][a-z]+(?:\s+[a-z][a-z]+)?", lowered))
 
 

@@ -214,7 +214,7 @@ class TestDocumentRAGFlow:
         assert response.answer
         # With local hashing embeddings, agent may ask for clarification
         # In production with proper embeddings, would route to document_rag
-        assert response.route in ["document_rag", "direct_response", "clarify"]
+        assert response.route in ["clinical_document_qa", "document_rag", "direct_response", "clarify"]
         print(f"✓ Agent routed to: {response.route}")
 
 

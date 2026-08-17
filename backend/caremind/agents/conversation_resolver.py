@@ -136,13 +136,15 @@ class ConversationResolverAgent:
 
         if self._explicitly_changes_to_general_topic(lowered):
             return with_intent({**base, "reason": "explicit_general_topic"}, route_hint="medical_education", confidence=0.9)
-        if self._asks_general_not_patient(lowered):
+        has_active_context = bool(active_patient or active_document_name or active_image or context.get("active_attachment_id"))
+        document_contextual_followup = has_active_context and self._looks_like_document_contextual_followup(lowered)
+        if self._asks_general_not_patient(lowered) and not document_contextual_followup:
             return with_intent(
                 {**base, "reason": "standalone_general_education_query"},
                 route_hint="medical_education",
                 confidence=0.88,
             )
-        if not active_patient and not active_document_name and not active_image and not context.get("active_attachment_id"):
+        if not has_active_context:
             return with_intent({**base, "reason": "no_active_context"})
         if not self._is_contextual_followup(normalized):
             return with_intent(base)
@@ -437,6 +439,29 @@ class ConversationResolverAgent:
 
     def _looks_like_contextual_comparison(self, message: str) -> bool:
         return any(term in message for term in ["compare", "changed", "difference", "trend", "worse", "better", "previous", "last time"])
+
+    def _looks_like_document_contextual_followup(self, message: str) -> bool:
+        padded = f" {message.lower().strip()} "
+        contextual_terms = [
+            " he ",
+            " him ",
+            " his ",
+            " she ",
+            " her ",
+            " it ",
+            " this ",
+            " that ",
+            " the patient",
+            "this patient",
+            "same patient",
+            "patient earlier",
+            "earlier",
+            "asking about the patient",
+            "test performed",
+            "what happened next",
+            "chest pain",
+        ]
+        return any(term in padded for term in contextual_terms)
 
     def _infer_route_hint(
         self,
