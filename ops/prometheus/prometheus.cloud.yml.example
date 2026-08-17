@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+remote_write:
+  - url: GRAFANA_CLOUD_PROM_URL
+    basic_auth:
+      username: GRAFANA_CLOUD_PROM_USER
+      password: GRAFANA_CLOUD_PROM_TOKEN
+
+scrape_configs:
+  - job_name: caremind-api
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - api:8000
+
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - localhost:9090
