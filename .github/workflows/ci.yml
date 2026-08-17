@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - master
+      - new_CareMind
 
 jobs:
   backend:
