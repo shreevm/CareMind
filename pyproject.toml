@@ -1,9 +1,9 @@
 [project]
 name = "caremind"
-version = "0.4.0"
+version = "0.6.0"
 description = "Agentic RAG assistant for medical and research documents."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
@@ -12,13 +12,33 @@ dependencies = [
     "pydantic-settings",
     "httpx",
     "langgraph",
+    "langsmith",
     "python-dotenv",
     "redis",
+    "psycopg[binary]",
     "pinecone",
     "pypdf",
+    "pillow",
+    "pytesseract",
     "pytest",
     "ragas",
+    "mcp",
+    "transformers",
+    "accelerate",
+    "torch==2.6.0+cpu",
+    "langchain-community>=0.4.2",
+    "elevenlabs",
+    "sentence-transformers>=5.7.0",
+    "bitsandbytes>=0.50.1",
 ]
 
 [tool.uv] 
 package = false
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

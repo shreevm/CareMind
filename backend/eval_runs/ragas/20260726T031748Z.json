@@ -1,0 +1,501 @@
+{
+  "run_id": "20260726T031748Z",
+  "workspace_id": "ragas-20260726T031748Z",
+  "rows": [
+    {
+      "user_input": "What are the key findings?",
+      "expected_route": "retrieve",
+      "route": "retrieve",
+      "actual_route": "clinical_document_qa",
+      "response": "Patient Details:\nPatient reported fatigue and mild shortness of breath.\n\nStudy:\nThis is a synthetic medical report with follow-up data.\n\nHeart Rate:\nNo heart rate data is provided in the evidence.\n\nKey Findings:\n\u2022 Fatigue improved between the baseline and follow-up reports [1, 2].\n\u2022 Hemoglobin levels increased from 11.2 g/dL to 12.6 g/dL [1, 2].\n\u2022 White blood cell count decreased from 8.1 to 7.9 [1, 2].\n\u2022 Chest x-ray showed no acute infiltrate at both baseline and follow-up [1, 2].\n\nEctopics:\nNo ectopic data is provided in the evidence.\n\nOverall/Clinical Context:\nThe patient's fatigue improved, and hemoglobin levels increased, suggesting an improvement in iron stores or erythropoiesis. Continued monitoring is recommended as per the plan notes [1, 2].From the uploaded report, this appears to be an ambulatory cardiac rhythm monitoring summary rather than a full diagnostic workup.\n\nKey findings:\n- I found rhythm-monitoring entries, but the extracted PDF text does not include a clear final impression section. [1]\n\nClinical interpretation:\n- The report evidence points to recorded sinus rhythm with episodes/entries involving sinus tachycardia and ectopic beats where listed. This should be interpreted by the ordering clinician or cardiologist in context of symptoms, medications, and the complete report.\n\nCareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.",
+      "reference": "The seeded reports mention fatigue, hemoglobin values of 11.2 and 12.6 g/dL, white blood cell counts of 8.1 and 7.9, no acute chest x-ray infiltrate, iron studies, routine follow-up, continued monitoring, and no urgent intervention.",
+      "reference_terms": [
+        "fatigue",
+        "hemoglobin",
+        "11.2",
+        "12.6",
+        "white blood cell",
+        "8.1",
+        "7.9",
+        "no acute infiltrate",
+        "iron studies",
+        "continued monitoring"
+      ],
+      "retrieved_contexts": [
+        "Synthetic medical report. Patient reports fatigue and mild shortness of breath. Hemoglobin is 11.2 g/dL. White blood cell count is 8.1. Chest x-ray shows no acute infiltrate. Plan notes iron studies and routine follow-up.",
+        "Synthetic follow-up report. Fatigue has improved. Hemoglobin is 12.6 g/dL. White blood cell count is 7.9. Chest x-ray remains without acute infiltrate. Plan notes continued monitoring and no urgent intervention documented."
+      ],
+      "retrieved_context_metadata": [
+        {
+          "chunk_id": "c1d1b657-4f70-4ea7-974e-1d7eb359c6d0:0",
+          "document_id": "c1d1b657-4f70-4ea7-974e-1d7eb359c6d0",
+          "document_name": "synthetic-lab-report-baseline.txt",
+          "score": 0.24940758507400715,
+          "text": "Synthetic medical report. Patient reports fatigue and mild shortness of breath. Hemoglobin is 11.2 g/dL. White blood cell count is 8.1. Chest x-ray shows no acute infiltrate. Plan notes iron studies and routine follow-up."
+        },
+        {
+          "chunk_id": "7e4a176a-a6fa-4cff-9c7e-a5bab194b2db:0",
+          "document_id": "7e4a176a-a6fa-4cff-9c7e-a5bab194b2db",
+          "document_name": "synthetic-lab-report-followup.txt",
+          "score": 0.24475683629798,
+          "text": "Synthetic follow-up report. Fatigue has improved. Hemoglobin is 12.6 g/dL. White blood cell count is 7.9. Chest x-ray remains without acute infiltrate. Plan notes continued monitoring and no urgent intervention documented."
+        }
+      ],
+      "citations": [
+        {
+          "document_id": "c1d1b657-4f70-4ea7-974e-1d7eb359c6d0",
+          "document_name": "synthetic-lab-report-baseline.txt",
+          "chunk_id": "c1d1b657-4f70-4ea7-974e-1d7eb359c6d0:0",
+          "page": null,
+          "score": 0.24940758507400715,
+          "quote": "Synthetic medical report. Patient reports fatigue and mild shortness of breath. Hemoglobin is 11.2 g/dL. White blood cell count is 8.1. Chest x-ray shows no acute infiltrate. Plan notes iron studies and routine follow-up."
+        },
+        {
+          "document_id": "7e4a176a-a6fa-4cff-9c7e-a5bab194b2db",
+          "document_name": "synthetic-lab-report-followup.txt",
+          "chunk_id": "7e4a176a-a6fa-4cff-9c7e-a5bab194b2db:0",
+          "page": null,
+          "score": 0.24475683629798,
+          "quote": "Synthetic follow-up report. Fatigue has improved. Hemoglobin is 12.6 g/dL. White blood cell count is 7.9. Chest x-ray remains without acute infiltrate. Plan notes continued monitoring and no urgent intervention documented."
+        }
+      ],
+      "tool_calls": [
+        "document_search"
+      ],
+      "time_to_first_token_ms": 2590.37,
+      "latency_ms": 3657.38,
+      "fallback": {
+        "retrieval_reference_term_recall": 1.0,
+        "generation_reference_term_recall": 0.9,
+        "faithfulness_proxy_supported_sentence_rate": 0.438
+      },
+      "retrieval": {
+        "context_recall@1": 0.7,
+        "precision@1": 1.0,
+        "context_recall@3": 1.0,
+        "precision@3": 0.667,
+        "context_recall@5": 1.0,
+        "precision@5": 0.4,
+        "mrr": 1.0
+      },
+      "generation": {
+        "answer_relevance_proxy": 0.036,
+        "faithfulness_proxy_supported_sentence_rate": 0.438,
+        "answer_correctness_proxy": 0.603,
+        "answer_reference_term_recall": 0.9
+      }
+    },
+    {
+      "user_input": "What changed between reports?",
+      "expected_route": "compare",
+      "route": "compare",
+      "actual_route": "report_comparison",
+      "response": "The reports are 9% textually similar across their indexed passages. New or more prominent terms in the later report: reports, mild, shortness, breath, 11.2, shows, iron, studies. Terms less prominent or absent in the later report: improved, 12.6, remains, without, continued, monitoring, urgent, intervention.\n\nCareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.",
+      "reference": "The follow-up report says fatigue improved, hemoglobin increased from 11.2 to 12.6 g/dL, white blood cell count changed from 8.1 to 7.9, chest x-ray remained without acute infiltrate, and the plan changed toward continued monitoring with no urgent intervention documented.",
+      "reference_terms": [
+        "fatigue improved",
+        "hemoglobin",
+        "11.2",
+        "12.6",
+        "8.1",
+        "7.9",
+        "without acute infiltrate",
+        "continued monitoring",
+        "no urgent intervention"
+      ],
+      "retrieved_contexts": [
+        "Synthetic follow-up report. Fatigue has improved. Hemoglobin is 12.6 g/dL. White blood cell count is 7.9. Chest x-ray remains without acute infiltrate. Plan notes continued monitoring and no urgent intervention documented.",
+        "Synthetic medical report. Patient reports fatigue and mild shortness of breath. Hemoglobin is 11.2 g/dL. White blood cell count is 8.1. Chest x-ray shows no acute infiltrate. Plan notes iron studies and routine follow-up."
+      ],
+      "retrieved_context_metadata": [
+        {
+          "chunk_id": "7e4a176a-a6fa-4cff-9c7e-a5bab194b2db:0",
+          "document_id": "7e4a176a-a6fa-4cff-9c7e-a5bab194b2db",
+          "document_name": "synthetic-lab-report-followup.txt",
+          "score": null,
+          "text": "Synthetic follow-up report. Fatigue has improved. Hemoglobin is 12.6 g/dL. White blood cell count is 7.9. Chest x-ray remains without acute infiltrate. Plan notes continued monitoring and no urgent intervention documented."
+        },
+        {
+          "chunk_id": "c1d1b657-4f70-4ea7-974e-1d7eb359c6d0:0",
+          "document_id": "c1d1b657-4f70-4ea7-974e-1d7eb359c6d0",
+          "document_name": "synthetic-lab-report-baseline.txt",
+          "score": null,
+          "text": "Synthetic medical report. Patient reports fatigue and mild shortness of breath. Hemoglobin is 11.2 g/dL. White blood cell count is 8.1. Chest x-ray shows no acute infiltrate. Plan notes iron studies and routine follow-up."
+        }
+      ],
+      "citations": [
+        {
+          "document_id": "7e4a176a-a6fa-4cff-9c7e-a5bab194b2db",
+          "document_name": "synthetic-lab-report-followup.txt",
+          "chunk_id": "7e4a176a-a6fa-4cff-9c7e-a5bab194b2db:0",
+          "page": null,
+          "score": null,
+          "quote": "Synthetic follow-up report. Fatigue has improved. Hemoglobin is 12.6 g/dL. White blood cell count is 7.9. Chest x-ray remains without acute infiltrate. Plan notes continued monitoring and no urgent intervention documented."
+        },
+        {
+          "document_id": "c1d1b657-4f70-4ea7-974e-1d7eb359c6d0",
+          "document_name": "synthetic-lab-report-baseline.txt",
+          "chunk_id": "c1d1b657-4f70-4ea7-974e-1d7eb359c6d0:0",
+          "page": null,
+          "score": null,
+          "quote": "Synthetic medical report. Patient reports fatigue and mild shortness of breath. Hemoglobin is 11.2 g/dL. White blood cell count is 8.1. Chest x-ray shows no acute infiltrate. Plan notes iron studies and routine follow-up."
+        }
+      ],
+      "tool_calls": [
+        "compare_reports"
+      ],
+      "time_to_first_token_ms": 0.0,
+      "latency_ms": 1326.5,
+      "fallback": {
+        "retrieval_reference_term_recall": 0.889,
+        "generation_reference_term_recall": 0.222,
+        "faithfulness_proxy_supported_sentence_rate": 0.4
+      },
+      "retrieval": {
+        "context_recall@1": 0.667,
+        "precision@1": 1.0,
+        "context_recall@3": 0.889,
+        "precision@3": 0.667,
+        "context_recall@5": 0.889,
+        "precision@5": 0.4,
+        "mrr": 1.0
+      },
+      "generation": {
+        "answer_relevance_proxy": 0.045,
+        "faithfulness_proxy_supported_sentence_rate": 0.4,
+        "answer_correctness_proxy": 0.25,
+        "answer_reference_term_recall": 0.222
+      }
+    },
+    {
+      "user_input": "Explain pneumonia symptoms in simple language.",
+      "expected_route": "medical_education",
+      "route": "medical_education",
+      "actual_route": "medical_knowledge_qa",
+      "response": "Pneumonia symptoms include:\n\n* Cough [1]\n* Fever [1]\n* Shortness of breath [1]\n* Fatigue [1]\n* Chest discomfort [1]\n\nThese symptoms can be similar to those of other conditions, such as anemia (fatigue, shortness of breath) [2] or chest pain (chest discomfort) [3]. If you experience any of these symptoms, it's essential to seek medical attention for proper evaluation and treatment.Based on the retrieved document passages, Pneumonia is an infection or inflammation of the lung tissue. Common symptoms include cough, fever, shortness of breath, fatigue, and chest discomfort. Symptoms can include fatigue, weakness, shortness of breath, dizziness, or palpitations. Potentially serious causes are assessed using symptoms, risk factors, ECG, cardiac biomarkers such as troponin, vital signs, and imaging when needed. [1]\n\nCareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.",
+      "reference": "Pneumonia is an infection or inflammation of lung tissue. Common symptoms include cough, fever, shortness of breath, fatigue, and chest discomfort. Evaluation can include vital signs, physical exam, pulse oximetry, chest imaging, and selected lab tests.",
+      "reference_terms": [
+        "pneumonia",
+        "infection",
+        "lung tissue",
+        "cough",
+        "fever",
+        "shortness of breath",
+        "fatigue",
+        "chest discomfort",
+        "pulse oximetry",
+        "chest imaging"
+      ],
+      "retrieved_contexts": [
+        "Pneumonia is an infection or inflammation of the lung tissue. Common symptoms include cough, fever, shortness of breath, fatigue, and chest discomfort. Evaluation may include vital signs, physical examination, pulse oximetry, chest imaging, and selected laboratory tests. Treatment depends on severity, risk factors, likely organism, allergies, and local clinical guidance.",
+        "Anemia means the blood has a lower than expected capacity to carry oxygen, often reflected by low hemoglobin. Symptoms can include fatigue, weakness, shortness of breath, dizziness, or palpitations. Common evaluation includes complete blood count, iron studies, ferritin, vitamin B12, folate, kidney function, and assessment for blood loss when clinically appropriate.",
+        "Chest pain can come from cardiac, lung, gastrointestinal, muscle, anxiety-related, or other causes. Potentially serious causes are assessed using symptoms, risk factors, ECG, cardiac biomarkers such as troponin, vital signs, and imaging when needed. Severe, persistent, or concerning chest pain requires urgent clinical assessment."
+      ],
+      "retrieved_context_metadata": [
+        {
+          "chunk_id": "education:pneumonia",
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Pneumonia",
+          "score": 0.5611675096659824,
+          "text": "Pneumonia is an infection or inflammation of the lung tissue. Common symptoms include cough, fever, shortness of breath, fatigue, and chest discomfort. Evaluation may include vital signs, physical examination, pulse oximetry, chest imaging, and selected laboratory tests. Treatment depends on severity, risk factors, likely organism, allergies, and local clinical guidance."
+        },
+        {
+          "chunk_id": "education:anemia",
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Anemia",
+          "score": 0.37352488356886443,
+          "text": "Anemia means the blood has a lower than expected capacity to carry oxygen, often reflected by low hemoglobin. Symptoms can include fatigue, weakness, shortness of breath, dizziness, or palpitations. Common evaluation includes complete blood count, iron studies, ferritin, vitamin B12, folate, kidney function, and assessment for blood loss when clinically appropriate."
+        },
+        {
+          "chunk_id": "education:chest-pain",
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Chest Pain",
+          "score": 0.2792805511996942,
+          "text": "Chest pain can come from cardiac, lung, gastrointestinal, muscle, anxiety-related, or other causes. Potentially serious causes are assessed using symptoms, risk factors, ECG, cardiac biomarkers such as troponin, vital signs, and imaging when needed. Severe, persistent, or concerning chest pain requires urgent clinical assessment."
+        }
+      ],
+      "citations": [
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Pneumonia",
+          "chunk_id": "education:pneumonia",
+          "page": null,
+          "score": 0.5611675096659824,
+          "quote": "Pneumonia is an infection or inflammation of the lung tissue. Common symptoms include cough, fever, shortness of breath, fatigue, and chest discomfort. Evaluation may include vital signs, physical examination, pulse oximetry, chest imaging, and selected laboratory tests. Treatment depends on severity, risk factors, likely organism, allergies, and local clini"
+        },
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Anemia",
+          "chunk_id": "education:anemia",
+          "page": null,
+          "score": 0.37352488356886443,
+          "quote": "Anemia means the blood has a lower than expected capacity to carry oxygen, often reflected by low hemoglobin. Symptoms can include fatigue, weakness, shortness of breath, dizziness, or palpitations. Common evaluation includes complete blood count, iron studies, ferritin, vitamin B12, folate, kidney function, and assessment for blood loss when clinically appr"
+        },
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Chest Pain",
+          "chunk_id": "education:chest-pain",
+          "page": null,
+          "score": 0.2792805511996942,
+          "quote": "Chest pain can come from cardiac, lung, gastrointestinal, muscle, anxiety-related, or other causes. Potentially serious causes are assessed using symptoms, risk factors, ECG, cardiac biomarkers such as troponin, vital signs, and imaging when needed. Severe, persistent, or concerning chest pain requires urgent clinical assessment."
+        }
+      ],
+      "tool_calls": [
+        "medical_education_search"
+      ],
+      "time_to_first_token_ms": 3416.41,
+      "latency_ms": 4262.13,
+      "fallback": {
+        "retrieval_reference_term_recall": 1.0,
+        "generation_reference_term_recall": 0.8,
+        "faithfulness_proxy_supported_sentence_rate": 0.778
+      },
+      "retrieval": {
+        "context_recall@1": 1.0,
+        "precision@1": 1.0,
+        "context_recall@3": 1.0,
+        "precision@3": 0.667,
+        "context_recall@5": 1.0,
+        "precision@5": 0.4,
+        "mrr": 1.0
+      },
+      "generation": {
+        "answer_relevance_proxy": 0.058,
+        "faithfulness_proxy_supported_sentence_rate": 0.778,
+        "answer_correctness_proxy": 0.611,
+        "answer_reference_term_recall": 0.8
+      }
+    },
+    {
+      "user_input": "What is hypertension?",
+      "expected_route": "medical_education",
+      "route": "medical_education",
+      "actual_route": "medical_knowledge_qa",
+      "response": "Hypertension is a condition where blood pressure is persistently elevated [1]. It is often monitored with repeated office or home readings and managed through lifestyle changes, such as reducing sodium intake, increasing physical activity, and limiting alcohol, as well as medications selected by a clinician based on patient context [1].Based on the retrieved document passages, Hypertension means blood pressure is persistently elevated. [1]\n\nCareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.",
+      "reference": "Hypertension means blood pressure is persistently elevated. It is monitored with repeated office or home readings, and general management may include lifestyle changes, sodium reduction, activity, weight management, limiting alcohol, and clinician-selected medications.",
+      "reference_terms": [
+        "hypertension",
+        "blood pressure",
+        "persistently elevated",
+        "office",
+        "home readings",
+        "lifestyle",
+        "sodium",
+        "activity",
+        "weight",
+        "medications"
+      ],
+      "retrieved_contexts": [
+        "Hypertension means blood pressure is persistently elevated. It is often monitored with repeated office or home readings. General management may include lifestyle changes, sodium reduction, physical activity, weight management, limiting alcohol, and medications selected by a clinician based on patient context.",
+        "Diabetes is a condition involving elevated blood glucose due to impaired insulin production, insulin action, or both. Monitoring can include glucose logs, hemoglobin A1c, kidney function, eye exams, foot checks, blood pressure, and cholesterol. Management is individualized and can include nutrition, activity, medications, and complication screening.",
+        "Anemia means the blood has a lower than expected capacity to carry oxygen, often reflected by low hemoglobin. Symptoms can include fatigue, weakness, shortness of breath, dizziness, or palpitations. Common evaluation includes complete blood count, iron studies, ferritin, vitamin B12, folate, kidney function, and assessment for blood loss when clinically appropriate."
+      ],
+      "retrieved_context_metadata": [
+        {
+          "chunk_id": "education:hypertension",
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Hypertension",
+          "score": 0.4979601896361498,
+          "text": "Hypertension means blood pressure is persistently elevated. It is often monitored with repeated office or home readings. General management may include lifestyle changes, sodium reduction, physical activity, weight management, limiting alcohol, and medications selected by a clinician based on patient context."
+        },
+        {
+          "chunk_id": "education:diabetes",
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Diabetes",
+          "score": 0.3107450860452164,
+          "text": "Diabetes is a condition involving elevated blood glucose due to impaired insulin production, insulin action, or both. Monitoring can include glucose logs, hemoglobin A1c, kidney function, eye exams, foot checks, blood pressure, and cholesterol. Management is individualized and can include nutrition, activity, medications, and complication screening."
+        },
+        {
+          "chunk_id": "education:anemia",
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Anemia",
+          "score": 0.24772195875755304,
+          "text": "Anemia means the blood has a lower than expected capacity to carry oxygen, often reflected by low hemoglobin. Symptoms can include fatigue, weakness, shortness of breath, dizziness, or palpitations. Common evaluation includes complete blood count, iron studies, ferritin, vitamin B12, folate, kidney function, and assessment for blood loss when clinically appropriate."
+        }
+      ],
+      "citations": [
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Hypertension",
+          "chunk_id": "education:hypertension",
+          "page": null,
+          "score": 0.4979601896361498,
+          "quote": "Hypertension means blood pressure is persistently elevated. It is often monitored with repeated office or home readings. General management may include lifestyle changes, sodium reduction, physical activity, weight management, limiting alcohol, and medications selected by a clinician based on patient context."
+        },
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Diabetes",
+          "chunk_id": "education:diabetes",
+          "page": null,
+          "score": 0.3107450860452164,
+          "quote": "Diabetes is a condition involving elevated blood glucose due to impaired insulin production, insulin action, or both. Monitoring can include glucose logs, hemoglobin A1c, kidney function, eye exams, foot checks, blood pressure, and cholesterol. Management is individualized and can include nutrition, activity, medications, and complication screening."
+        },
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Anemia",
+          "chunk_id": "education:anemia",
+          "page": null,
+          "score": 0.24772195875755304,
+          "quote": "Anemia means the blood has a lower than expected capacity to carry oxygen, often reflected by low hemoglobin. Symptoms can include fatigue, weakness, shortness of breath, dizziness, or palpitations. Common evaluation includes complete blood count, iron studies, ferritin, vitamin B12, folate, kidney function, and assessment for blood loss when clinically appr"
+        }
+      ],
+      "tool_calls": [
+        "medical_education_search"
+      ],
+      "time_to_first_token_ms": 2585.91,
+      "latency_ms": 3232.67,
+      "fallback": {
+        "retrieval_reference_term_recall": 1.0,
+        "generation_reference_term_recall": 0.9,
+        "faithfulness_proxy_supported_sentence_rate": 0.5
+      },
+      "retrieval": {
+        "context_recall@1": 1.0,
+        "precision@1": 1.0,
+        "context_recall@3": 1.0,
+        "precision@3": 0.667,
+        "context_recall@5": 1.0,
+        "precision@5": 0.4,
+        "mrr": 1.0
+      },
+      "generation": {
+        "answer_relevance_proxy": 0.042,
+        "faithfulness_proxy_supported_sentence_rate": 0.5,
+        "answer_correctness_proxy": 0.736,
+        "answer_reference_term_recall": 0.9
+      }
+    },
+    {
+      "user_input": "What food should someone with iron deficiency eat?",
+      "expected_route": "medical_education",
+      "route": "medical_education",
+      "actual_route": "medical_knowledge_qa",
+      "response": "Someone with iron deficiency should eat iron-rich foods such as lean red meat, poultry, fish, eggs, beans, lentils, chickpeas, tofu, spinach, and dark leafy greens [1]. Additionally, consuming vitamin C foods like citrus, berries, tomatoes, and bell peppers can improve absorption of non-heme iron from plant foods [1].Based on the retrieved document passages, For iron deficiency nutrition education, iron-rich foods include lean red meat, poultry, fish, eggs, beans, lentils, chickpeas, tofu, spinach and other dark leafy greens, nuts, seeds, dried fruits, and iron-fortified cereals or grains. Vitamin C foods such as citrus, berries, tomatoes, bell peppers, and broccoli can improve absorption of non-heme iron from plant foods. Tea, coffee, calcium supplements, and high-calcium foods can reduce iron absorption when taken at the same time, so timing may matter. Dietary advice should be individualized by a clinician, especially for children, pregnancy, heavy menstrual bleeding, gastrointestinal symptoms, chronic disease, or when iron supplements are being considered. [1]\n\nCareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.",
+      "reference": "Iron deficiency nutrition education commonly includes iron-rich foods such as meat, poultry, fish, eggs, beans, lentils, tofu, leafy greens, seeds, dried fruits, and fortified cereals. Vitamin C foods can improve non-heme iron absorption, while tea, coffee, and calcium can reduce absorption when taken at the same time.",
+      "reference_terms": [
+        "iron-rich foods",
+        "meat",
+        "poultry",
+        "fish",
+        "beans",
+        "lentils",
+        "tofu",
+        "leafy greens",
+        "fortified cereals",
+        "vitamin C",
+        "tea",
+        "coffee",
+        "calcium"
+      ],
+      "retrieved_contexts": [
+        "For iron deficiency nutrition education, iron-rich foods include lean red meat, poultry, fish, eggs, beans, lentils, chickpeas, tofu, spinach and other dark leafy greens, nuts, seeds, dried fruits, and iron-fortified cereals or grains. Vitamin C foods such as citrus, berries, tomatoes, bell peppers, and broccoli can improve absorption of non-heme iron from plant foods. Tea, coffee, calcium supplements, and high-calcium foods can reduce iron absorption when taken at the same time, so timing may matter. Dietary advice should be individualized by a clinician, especially for children, pregnancy, heavy menstrual bleeding, gastrointestinal symptoms, chronic disease, or when iron supplements are being considered.",
+        "Anemia means the blood has a lower than expected capacity to carry oxygen, often reflected by low hemoglobin. Symptoms can include fatigue, weakness, shortness of breath, dizziness, or palpitations. Common evaluation includes complete blood count, iron studies, ferritin, vitamin B12, folate, kidney function, and assessment for blood loss when clinically appropriate.",
+        "Pneumonia is an infection or inflammation of the lung tissue. Common symptoms include cough, fever, shortness of breath, fatigue, and chest discomfort. Evaluation may include vital signs, physical examination, pulse oximetry, chest imaging, and selected laboratory tests. Treatment depends on severity, risk factors, likely organism, allergies, and local clinical guidance."
+      ],
+      "retrieved_context_metadata": [
+        {
+          "chunk_id": "education:iron-deficiency-nutrition",
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Iron Deficiency Nutrition",
+          "score": 0.5669445254517982,
+          "text": "For iron deficiency nutrition education, iron-rich foods include lean red meat, poultry, fish, eggs, beans, lentils, chickpeas, tofu, spinach and other dark leafy greens, nuts, seeds, dried fruits, and iron-fortified cereals or grains. Vitamin C foods such as citrus, berries, tomatoes, bell peppers, and broccoli can improve absorption of non-heme iron from plant foods. Tea, coffee, calcium supplements, and high-calcium foods can reduce iron absorption when taken at the same time, so timing may matter. Dietary advice should be individualized by a clinician, especially for children, pregnancy, heavy menstrual bleeding, gastrointestinal symptoms, chronic disease, or when iron supplements are being considered."
+        },
+        {
+          "chunk_id": "education:anemia",
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Anemia",
+          "score": 0.3826756708777481,
+          "text": "Anemia means the blood has a lower than expected capacity to carry oxygen, often reflected by low hemoglobin. Symptoms can include fatigue, weakness, shortness of breath, dizziness, or palpitations. Common evaluation includes complete blood count, iron studies, ferritin, vitamin B12, folate, kidney function, and assessment for blood loss when clinically appropriate."
+        },
+        {
+          "chunk_id": "education:pneumonia",
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Pneumonia",
+          "score": 0.19368214579284904,
+          "text": "Pneumonia is an infection or inflammation of the lung tissue. Common symptoms include cough, fever, shortness of breath, fatigue, and chest discomfort. Evaluation may include vital signs, physical examination, pulse oximetry, chest imaging, and selected laboratory tests. Treatment depends on severity, risk factors, likely organism, allergies, and local clinical guidance."
+        }
+      ],
+      "citations": [
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Iron Deficiency Nutrition",
+          "chunk_id": "education:iron-deficiency-nutrition",
+          "page": null,
+          "score": 0.5669445254517982,
+          "quote": "For iron deficiency nutrition education, iron-rich foods include lean red meat, poultry, fish, eggs, beans, lentils, chickpeas, tofu, spinach and other dark leafy greens, nuts, seeds, dried fruits, and iron-fortified cereals or grains. Vitamin C foods such as citrus, berries, tomatoes, bell peppers, and broccoli can improve absorption of non-heme iron from p"
+        },
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Anemia",
+          "chunk_id": "education:anemia",
+          "page": null,
+          "score": 0.3826756708777481,
+          "quote": "Anemia means the blood has a lower than expected capacity to carry oxygen, often reflected by low hemoglobin. Symptoms can include fatigue, weakness, shortness of breath, dizziness, or palpitations. Common evaluation includes complete blood count, iron studies, ferritin, vitamin B12, folate, kidney function, and assessment for blood loss when clinically appr"
+        },
+        {
+          "document_id": "general-medical-education",
+          "document_name": "General Education - Pneumonia",
+          "chunk_id": "education:pneumonia",
+          "page": null,
+          "score": 0.19368214579284904,
+          "quote": "Pneumonia is an infection or inflammation of the lung tissue. Common symptoms include cough, fever, shortness of breath, fatigue, and chest discomfort. Evaluation may include vital signs, physical examination, pulse oximetry, chest imaging, and selected laboratory tests. Treatment depends on severity, risk factors, likely organism, allergies, and local clini"
+        }
+      ],
+      "tool_calls": [
+        "medical_education_search"
+      ],
+      "time_to_first_token_ms": 2645.54,
+      "latency_ms": 3273.67,
+      "fallback": {
+        "retrieval_reference_term_recall": 1.0,
+        "generation_reference_term_recall": 1.0,
+        "faithfulness_proxy_supported_sentence_rate": 0.714
+      },
+      "retrieval": {
+        "context_recall@1": 1.0,
+        "precision@1": 1.0,
+        "context_recall@3": 1.0,
+        "precision@3": 0.333,
+        "context_recall@5": 1.0,
+        "precision@5": 0.2,
+        "mrr": 1.0
+      },
+      "generation": {
+        "answer_relevance_proxy": 0.104,
+        "faithfulness_proxy_supported_sentence_rate": 0.714,
+        "answer_correctness_proxy": 0.778,
+        "answer_reference_term_recall": 1.0
+      }
+    }
+  ],
+  "fallback_summary": {
+    "route_accuracy": 1.0,
+    "citation_pass_rate": 1.0,
+    "retrieval_reference_term_recall": 0.978,
+    "generation_reference_term_recall": 0.764,
+    "faithfulness_proxy_supported_sentence_rate": 0.566,
+    "average_retrieved_contexts": 2.6,
+    "context_recall@1": 0.873,
+    "precision@1": 1.0,
+    "context_recall@3": 0.978,
+    "precision@3": 0.6,
+    "context_recall@5": 0.978,
+    "precision@5": 0.36,
+    "mrr": 1.0,
+    "answer_relevance_proxy": 0.057,
+    "answer_correctness_proxy": 0.596
+  },
+  "performance_summary": {
+    "latency_ms_avg": 3150.47,
+    "latency_ms_p50": 3273.67,
+    "latency_ms_p95": 4262.13,
+    "latency_ms_max": 4262.13,
+    "time_to_first_token_ms_avg": 2247.65,
+    "time_to_first_token_ms_p50": 2590.37,
+    "time_to_first_token_ms_p95": 3416.41,
+    "time_to_first_token_coverage": 1.0
+  },
+  "ragas_status": "fallback_only",
+  "ragas_result": null,
+  "ragas_error": "Full RAGAS disabled. Set CAREMIND_RAGAS_FULL_ENABLED=true to run evaluator-LLM metrics."
+}

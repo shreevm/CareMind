@@ -2,7 +2,7 @@
   "name": "caremind-vscode",
   "displayName": "CareMind",
   "description": "VS Code sidebar for the CareMind medical document RAG assistant.",
-  "version": "0.4.0",
+  "version": "0.6.0",
   "publisher": "caremind",
   "engines": {
     "vscode": "^1.90.0"
@@ -23,6 +23,11 @@
           "type": "string",
           "default": "http://127.0.0.1:8000",
           "description": "CareMind backend API URL."
+        },
+        "caremind.sessionId": {
+          "type": "string",
+          "default": "",
+          "description": "Optional fixed CareMind session ID. Leave blank to persist an extension-generated session."
         }
       }
     },

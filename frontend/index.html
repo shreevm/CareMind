@@ -15,16 +15,14 @@
         </div>
 
         <div class="toolbar">
+          <button id="new-chat" type="button" class="secondary">New chat</button>
           <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
         </div>
 
-        <form id="upload-form" class="upload-box">
-          <label for="file">Upload PDF or text</label>
-          <div class="file-control">
-            <input id="file" name="file" type="file" accept=".pdf,.txt,.md,text/plain,application/pdf" />
-            <button type="submit">Upload</button>
-          </div>
-        </form>
+        <div class="panel chat-history-panel">
+          <div class="panel-title">Chat History</div>
+          <div id="chat-history" class="chat-history"></div>
+        </div>
 
         <div id="status" class="status" role="status">Ready.</div>
 
@@ -35,26 +33,51 @@
           <div id="documents" class="documents"></div>
         </div>
 
+        <div class="panel">
+          <div class="panel-title">Images</div>
+          <div id="images" class="documents"></div>
+        </div>
+
         <button id="compare" class="secondary">Compare selected</button>
       </section>
 
       <section class="chat">
+        <div class="chat-header">
+          <div class="disclaimer-banner" role="note">
+            CareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.
+          </div>
+          <div class="mode-switch" aria-label="Chat mode">
+            <button id="patient-mode" type="button" class="is-active" aria-pressed="true">Patient</button>
+            <button id="agent-mode" type="button" aria-pressed="false">Agent</button>
+          </div>
+        </div>
         <div id="messages" class="messages" aria-live="polite">
           <div class="message assistant">
             Upload a synthetic medical report or seed the demo, then ask what changed, what the key findings are, or which evidence supports a statement.
           </div>
         </div>
-        <form id="chat-form" class="composer" aria-label="Chat composer">
-          <input id="message" autocomplete="off" placeholder="Ask about the uploaded reports..." />
-          <button id="voice" type="button" class="icon-button" title="Dictate question" aria-label="Dictate question">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z"></path>
-              <path d="M19 11a7 7 0 0 1-14 0"></path>
-              <path d="M12 18v4"></path>
-              <path d="M8 22h8"></path>
-            </svg>
-          </button>
-          <button type="submit">Send</button>
+        <form id="chat-form" class="composer-shell" aria-label="Chat composer">
+          <div id="attachment-tray" class="attachment-tray" aria-label="Attached files"></div>
+          <div class="composer">
+            <input id="message" autocomplete="off" placeholder="Ask about the uploaded reports..." />
+            <input id="file" class="hidden-file-input" name="file" type="file" multiple accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp,text/plain,text/markdown,application/pdf,image/png,image/jpeg,image/webp" />
+            <label id="composer-upload" for="file" class="icon-button" title="Upload document" aria-label="Upload document" role="button" tabindex="0">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <path d="M17 8l-5-5-5 5"></path>
+                <path d="M12 3v12"></path>
+              </svg>
+            </label>
+            <button id="voice" type="button" class="icon-button" title="Dictate question" aria-label="Dictate question">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z"></path>
+                <path d="M19 11a7 7 0 0 1-14 0"></path>
+                <path d="M12 18v4"></path>
+                <path d="M8 22h8"></path>
+              </svg>
+            </button>
+            <button type="submit">Send</button>
+          </div>
         </form>
       </section>
     </main>

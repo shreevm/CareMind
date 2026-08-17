@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { randomUUID } from "crypto";
 
 export function activate(context: vscode.ExtensionContext) {
-  const provider = new CareMindViewProvider(context.extensionUri);
+  const provider = new CareMindViewProvider(context.extensionUri, context);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider("caremind.chatView", provider)
   );
@@ -11,9 +11,14 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {}
 
 class CareMindViewProvider implements vscode.WebviewViewProvider {
-  private readonly sessionId = randomUUID();
+  private sessionId: string;
 
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly context: vscode.ExtensionContext
+  ) {
+    this.sessionId = this.resolveSessionId();
+  }
 
   resolveWebviewView(webviewView: vscode.WebviewView) {
     webviewView.webview.options = {
@@ -27,6 +32,7 @@ class CareMindViewProvider implements vscode.WebviewViewProvider {
       const apiBaseUrl = vscode.workspace
         .getConfiguration("caremind")
         .get<string>("apiBaseUrl", "http://127.0.0.1:8000");
+      this.sessionId = this.resolveSessionId();
 
       try {
         const response = await fetch(`${apiBaseUrl.replace(/\/$/, "")}/chat`, {
@@ -107,5 +113,18 @@ class CareMindViewProvider implements vscode.WebviewViewProvider {
         </body>
       </html>
     `;
+  }
+
+  private resolveSessionId(): string {
+    const configured = vscode.workspace
+      .getConfiguration("caremind")
+      .get<string>("sessionId", "")
+      .trim();
+    if (configured) return configured;
+    const stored = this.context.globalState.get<string>("caremind.sessionId");
+    if (stored) return stored;
+    const generated = randomUUID();
+    this.context.globalState.update("caremind.sessionId", generated);
+    return generated;
   }
 }

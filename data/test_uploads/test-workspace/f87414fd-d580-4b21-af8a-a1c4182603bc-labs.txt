@@ -1,0 +1,7 @@
+
+        Lab Results - Patient ABC:
+        - Hemoglobin: 13.5 g/dL (normal)
+        - Glucose: 95 mg/dL (normal)
+        - Creatinine: 1.0 mg/dL (normal)
+        - Diagnosis: All labs normal, patient healthy
+        

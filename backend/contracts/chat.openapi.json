@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CareMind Chat API",
-    "version": "0.1.0",
+    "version": "0.6.0",
     "description": "Chat endpoint contract for CareMind agentic medical RAG assistant."
   },
   "servers": [
@@ -35,6 +35,60 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Attachment ID is not available to the requested workspace/session."
+          }
+        }
+      }
+    },
+    "/speech/transcribe": {
+      "post": {
+        "summary": "Transcribe uploaded voice input with ElevenLabs Scribe v2 batch STT.",
+        "operationId": "postSpeechTranscribe",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "session_id": {
+                    "type": "string",
+                    "default": "default"
+                  },
+                  "workspace_id": {
+                    "type": "string",
+                    "default": "default"
+                  },
+                  "started_at": {
+                    "type": ["string", "null"],
+                    "format": "date-time"
+                  },
+                  "ended_at": {
+                    "type": ["string", "null"],
+                    "format": "date-time"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Scribe v2 transcript and detected language metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptMetadata"
+                }
+              }
+            }
           }
         }
       }
@@ -50,37 +104,76 @@
             "type": "string",
             "description": "User text or transcribed voice input."
           },
+          "attachment_ids": {
+            "type": "array",
+            "description": "Conversation-scoped attachment IDs returned from /upload and bound to this user message after authorization.",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
           "session_id": {
             "type": "string"
           },
           "workspace_id": {
             "type": "string"
           },
-          "input_modality": {
+          "modality": {
             "type": "string",
             "enum": ["text", "voice", "image", "document"],
             "default": "text"
           },
-          "attachments": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Attachment"
-            }
+          "transcript": {
+            "$ref": "#/components/schemas/TranscriptMetadata"
           },
-          "language": {
-            "type": "string",
-            "default": "en"
+          "response_language": {
+            "type": ["string", "null"],
+            "description": "Effective answer language chosen from session override or detected voice language."
+          },
+          "top_k": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12,
+            "default": 5
           }
         }
       },
-      "Attachment": {
+      "TranscriptMetadata": {
         "type": "object",
         "properties": {
-          "type": {
-            "type": "string",
-            "enum": ["pdf", "text", "image", "audio"]
+          "text": {
+            "type": "string"
           },
-          "id": {
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "language": {
+            "type": "string"
+          },
+          "detected_language": {
+            "type": ["string", "null"],
+            "description": "Language code returned by ElevenLabs Scribe v2 automatic language detection."
+          },
+          "language_confidence": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "timestamps": {
+            "type": "array",
+            "description": "Word-level Scribe timestamps preserved from the original transcript.",
+            "items": {
+              "type": "object"
+            },
+            "default": []
+          },
+          "modality": {
+            "type": ["string", "null"],
+            "default": "voice"
+          },
+          "input_modality": {
             "type": "string"
           }
         }
@@ -89,11 +182,20 @@
         "type": "object",
         "required": ["source_id", "quote"],
         "properties": {
-          "source_id": {
+          "document_id": {
+            "type": "string"
+          },
+          "document_name": {
             "type": "string"
           },
           "chunk_id": {
             "type": "string"
+          },
+          "page": {
+            "type": ["integer", "null"]
+          },
+          "score": {
+            "type": ["number", "null"]
           },
           "quote": {
             "type": "string"
@@ -116,17 +218,20 @@
               "$ref": "#/components/schemas/Citation"
             }
           },
-          "cache_hit": {
-            "type": "boolean"
-          },
-          "guardrails": {
+          "safety_notes": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "latency_ms": {
-            "type": "number"
+          "tool_calls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "trace": {
+            "type": "object"
           }
         }
       }

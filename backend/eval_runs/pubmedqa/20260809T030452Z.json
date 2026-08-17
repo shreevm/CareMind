@@ -1,0 +1,187 @@
+{
+  "run_id": "20260809T030452Z",
+  "dataset": "E:\\datasets\\pubmedqa\\data\\ori_pqal.json",
+  "workspace_id": "pubmedqa-20260809T030452Z",
+  "pipeline": "direct_rag",
+  "top_k": 3,
+  "summary": {
+    "cases": 3,
+    "label_accuracy": 0.0,
+    "label_macro_f1": 0.0,
+    "answer_token_f1": 0.18,
+    "faithfulness_proxy_supported_sentence_rate": 0.746,
+    "latency_ms_avg": 3319.623,
+    "time_to_first_token_ms_avg": null,
+    "gold_doc_recall@1": 1.0,
+    "gold_doc_precision@1": 1.0,
+    "gold_doc_recall@3": 1.0,
+    "gold_doc_precision@3": 0.333,
+    "gold_doc_recall@5": 1.0,
+    "gold_doc_precision@5": 0.2,
+    "mrr": 1.0
+  },
+  "rows": [
+    {
+      "pmid": "21645374",
+      "indexed_document_id": "72c13ccf-ac8a-4931-8574-04cb1103def8",
+      "question": "Do mitochondria play a role in remodelling lace plant leaves during programmed cell death?",
+      "reference": "Results depicted mitochondrial dynamics in vivo as PCD progresses within the lace plant, and highlight the correlation of this organelle with other organelles during developmental PCD. To the best of our knowledge, this is the first report of mitochondria and chloroplasts moving on transvacuolar strands to form a ring structure surrounding the nucleus during developmental PCD. Also, for the first time, we have shown the feasibility for the use of CsA in a whole plant system. Overall, our findings implicate the mitochondria as playing a critical and early role in developmentally regulated PCD in the lace plant.",
+      "gold_label": "yes",
+      "predicted_label": "maybe",
+      "answer": "Based on the retrieved PubMed abstract evidence, the role of mitochondria in remodelling lace plant leaves during programmed cell death (PCD) is not explicitly stated. However, the evidence provides some relevant information.\n\nThe lace plant (Aponogeton madagascariensis) produces perforations in its leaves through PCD, which occurs in the cells at the center of areoles and progresses outwards, stopping approximately five cells from the vasculature [1, 2]. The role of mitochondria during PCD has been recognized in animals, but it is not clear if this is also the case in plants [1, 2].\n\nThere is no direct evidence to support or refute the role of mitochondria in remodelling lace plant leaves during PCD. The evidence does not provide any specific findings, values, or trends related to mitochondria in the context of PCD in plants.\n\nTherefore, the answer to the question is:\n\nFinal decision: maybe",
+      "route": "direct_rag",
+      "latency_ms": 3237.15,
+      "time_to_first_token_ms": null,
+      "retrieved_contexts": [
+        "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 21645374 Research question: Do mitochondria play a role in remodelling lace plant leaves during programmed cell death? PubMed abstract context: Programmed cell death (PCD) is the regulated death of cells within an organism. The lace plant (Aponogeton madagascariensis) produces perforations in its leaves through PCD. The leaves of the plant consist of a latticework of longitudinal and transverse veins enclosing areoles. PCD occurs in the cells at the center of these areoles and pro\n\nClinical Notes\nDocument type: clinical_document\n[{\"heading\": \"PubMedQA PMID\", \"text\": \"21645374\"}, {\"heading\": \"Research question\", \"text\": \"Do mitochondria play a role in remodelling lace plant leaves during programmed cell death?\"}, {\"heading\": \"PubMed abstract context\", \"text\": \"Programmed cell death (PCD) is the regulated death of cells within an organism. The lace plant (Aponogeton madagascariensis) produces perforations in its leaves through PCD. The leaves of the plant consist of a latticework of longitudinal and transverse veins enclosing areoles. PCD occurs in the cells at the center of these areoles and progresses outwards, stopping approximately five cells from the vasculature. The role of mitochondria during PCD has been recognized in animals; however, it has b\"}]",
+        "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 21645374 Research question: Do mitochondria play a role in remodelling lace plant leaves during programmed cell death? PubMed abstract context: Programmed cell death (PCD) is the regulated death of cells within an organism. The lace plant (Aponogeton madagascariensis) produces perforations in its leaves through PCD. The leaves of the plant consist of a latticework of longitudinal and transverse veins enclosing areoles. PCD occurs in the cells at the center of these areoles and pro\n\nClinical Notes\nDocument type: clinical_document\n[{\"heading\": \"PubMedQA PMID\", \"text\": \"21645374\"}, {\"heading\": \"Research question\", \"text\": \"Do mitochondria play a role in remodelling lace plant leaves during programmed cell death?\"}, {\"heading\": \"PubMed abstract context\", \"text\": \"Programmed cell death (PCD) is the regulated death of cells within an organism. The lace plant (Aponogeton madagascariensis) produces perforations in its leaves through PCD. The leaves of the plant consist of a latticework of longitudinal and transverse veins enclosing areoles. PCD occurs in the cells at the center of these areoles and progresses outwards, stopping approximately five cells from the vasculature. The role of mitochondria during PCD has been recognized in animals; however, it has b\"}]",
+        "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 9488747 Research question: Syncope during bathing in infants, a pediatric form of water-induced urticaria? PubMed abstract context: Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome. Eight infants aged 2 to 15 months were admitted during a period of 6 years; they suffered from similar maladies in the bath: on immersion, they became pale, hypotonic, still\n\nClinical Notes\nDocument type: clinical_document\n[{\"heading\": \"PubMedQA PMID\", \"text\": \"9488747\"}, {\"heading\": \"Research question\", \"text\": \"Syncope during bathing in infants, a pediatric form of water-induced urticaria?\"}, {\"heading\": \"PubMed abstract context\", \"text\": \"Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome.\"}]"
+      ],
+      "retrieved_context_metadata": [
+        {
+          "chunk_id": "72c13ccf-ac8a-4931-8574-04cb1103def8:0",
+          "document_id": "72c13ccf-ac8a-4931-8574-04cb1103def8",
+          "document_name": "pubmedqa-21645374.txt",
+          "page": null,
+          "score": 0.6350723215544679,
+          "text": "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 21645374 Research question: Do mitochondria play a role in remodelling lace plant leaves during programmed cell death? PubMed abstract context: Programmed cell death (PCD) is the regulated death of cells within an organism. The lace plant (Aponogeton madagascariensis) produces perforations in its leaves through PCD. The leaves of the plant consist of a latticework of longitudinal and transverse veins enclosing areoles. PCD occurs in the cells at the center of these areoles and pro\n\nClinical Notes\nDocument type: clinical_document\n[{\"heading\": \"PubMedQA PMID\", \"text\": \"21645374\"}, {\"heading\": \"Research question\", \"text\": \"Do mitochondria play a role in remodelling lace plant leaves during programmed cell death?\"}, {\"heading\": \"PubMed abstract context\", \"text\": \"Programmed cell death (PCD) is the regulated death of cells within an organism. The lace plant (Aponogeton madagascariensis) produces perforations in its leaves through PCD. The leaves of the plant consist of a latticework of longitudinal and transverse veins enclosing areoles. PCD occurs in the cells at the center of these areoles and progresses outwards, stopping approximately five cells from the vasculature. The role of mitochondria during PCD has been recognized in animals; however, it has b\"}]"
+        },
+        {
+          "chunk_id": "72c13ccf-ac8a-4931-8574-04cb1103def8:1",
+          "document_id": "72c13ccf-ac8a-4931-8574-04cb1103def8",
+          "document_name": "pubmedqa-21645374.txt",
+          "page": null,
+          "score": 0.6210944299868312,
+          "text": "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 21645374 Research question: Do mitochondria play a role in remodelling lace plant leaves during programmed cell death? PubMed abstract context: Programmed cell death (PCD) is the regulated death of cells within an organism. The lace plant (Aponogeton madagascariensis) produces perforations in its leaves through PCD. The leaves of the plant consist of a latticework of longitudinal and transverse veins enclosing areoles. PCD occurs in the cells at the center of these areoles and pro\n\nClinical Notes\nDocument type: clinical_document\n[{\"heading\": \"PubMedQA PMID\", \"text\": \"21645374\"}, {\"heading\": \"Research question\", \"text\": \"Do mitochondria play a role in remodelling lace plant leaves during programmed cell death?\"}, {\"heading\": \"PubMed abstract context\", \"text\": \"Programmed cell death (PCD) is the regulated death of cells within an organism. The lace plant (Aponogeton madagascariensis) produces perforations in its leaves through PCD. The leaves of the plant consist of a latticework of longitudinal and transverse veins enclosing areoles. PCD occurs in the cells at the center of these areoles and progresses outwards, stopping approximately five cells from the vasculature. The role of mitochondria during PCD has been recognized in animals; however, it has b\"}]"
+        },
+        {
+          "chunk_id": "d8e6229d-bc4c-45bb-8ab7-d76ffe39be09:0",
+          "document_id": "d8e6229d-bc4c-45bb-8ab7-d76ffe39be09",
+          "document_name": "pubmedqa-9488747.txt",
+          "page": null,
+          "score": 0.24765097956826004,
+          "text": "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 9488747 Research question: Syncope during bathing in infants, a pediatric form of water-induced urticaria? PubMed abstract context: Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome. Eight infants aged 2 to 15 months were admitted during a period of 6 years; they suffered from similar maladies in the bath: on immersion, they became pale, hypotonic, still\n\nClinical Notes\nDocument type: clinical_document\n[{\"heading\": \"PubMedQA PMID\", \"text\": \"9488747\"}, {\"heading\": \"Research question\", \"text\": \"Syncope during bathing in infants, a pediatric form of water-induced urticaria?\"}, {\"heading\": \"PubMed abstract context\", \"text\": \"Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome.\"}]"
+        }
+      ],
+      "retrieval": {
+        "gold_doc_recall@1": 1.0,
+        "gold_doc_precision@1": 1.0,
+        "gold_doc_recall@3": 1.0,
+        "gold_doc_precision@3": 0.333,
+        "gold_doc_recall@5": 1.0,
+        "gold_doc_precision@5": 0.2,
+        "mrr": 1.0
+      },
+      "answer_token_f1": 0.161,
+      "faithfulness_proxy_supported_sentence_rate": 0.571
+    },
+    {
+      "pmid": "16418930",
+      "indexed_document_id": "2deffd8a-4352-419a-9dd7-3ba07b16d7c0",
+      "question": "Landolt C and snellen e acuity: differences in strabismus amblyopia?",
+      "reference": "Using the charts described, there was only a slight overestimation of visual acuity by the Snellen E compared to the Landolt C, even in strabismus amblyopia. Small differences in the lower visual acuity range have to be considered.",
+      "gold_label": "no",
+      "predicted_label": "maybe",
+      "answer": "Based on the retrieved PubMed abstract evidence, the answer to the biomedical research question is as follows:\n\nThe question is whether there are differences in strabismus amblyopia when using Landolt C and Snellen E acuity. The evidence suggests that the ability to recognize different optotypes differs even if their critical details appear under the same visual angle [2]. This implies that differences in visual acuity measured with different optotypes, such as Landolt C and Snellen E, cannot be excluded, especially in the lower visual acuity range [2]. In this study, visual acuity measured with the Snellen E was compared to the Landolt C acuity [2]. However, the evidence does not provide specific information on the differences in strabismus amblyopia between Landolt C and Snellen E acuity.\n\nThe patient's age is mentioned as 8 years old [1, 2]. However, this information is not relevant to the question of differences in strabismus amblyopia between Landolt C and Snellen E acuity.\n\nThere is no evidence to suggest that the patient has strabismus amblyopia or that the Landolt C and Snellen E acuity tests were used to diagnose or assess strabismus amblyopia.\n\nFinal decision: maybe",
+      "route": "direct_rag",
+      "latency_ms": 3549.93,
+      "time_to_first_token_ms": null,
+      "retrieved_contexts": [
+        "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 16418930 Research question: Landolt C and snellen e acuity: differences in strabismus amblyopia? PubMed abstract context: Assessment of visual acuity depends on the optotypes used for measurement. The ability to recognize different optotypes differs even if their critical details appear under the same visual angle. Since optotypes are evaluated on individuals with good visual acuity and without eye disorders, differences in the lower visual acuity range cannot be excluded. In this\n\nPatient Information\nDocument type: clinical_document\n{\"age\": \"8\"}",
+        "Patient Information\nDocument type: clinical_document\n{\"age\": \"8\"}\n\nClinical Notes\nDocument type: clinical_document\n[{\"heading\": \"PubMedQA PMID\", \"text\": \"16418930\"}, {\"heading\": \"Research question\", \"text\": \"Landolt C and snellen e acuity: differences in strabismus amblyopia?\"}, {\"heading\": \"PubMed abstract context\", \"text\": \"Assessment of visual acuity depends on the optotypes used for measurement. The ability to recognize different optotypes differs even if their critical details appear under the same visual angle. Since optotypes are evaluated on individuals with good visual acuity and without eye disorders, differences in the lower visual acuity range cannot be excluded. In this study, visual acuity measured with the Snellen E was compared to the Landolt C acuity.\"}]",
+        "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 9488747 Research question: Syncope during bathing in infants, a pediatric form of water-induced urticaria? PubMed abstract context: Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome. Eight infants aged 2 to 15 months were admitted during a period of 6 years; they suffered from similar maladies in the bath: on immersion, they became pale, hypotonic, still\n\nClinical Notes\nDocument type: clinical_document\n[{\"heading\": \"PubMedQA PMID\", \"text\": \"9488747\"}, {\"heading\": \"Research question\", \"text\": \"Syncope during bathing in infants, a pediatric form of water-induced urticaria?\"}, {\"heading\": \"PubMed abstract context\", \"text\": \"Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome.\"}]"
+      ],
+      "retrieved_context_metadata": [
+        {
+          "chunk_id": "2deffd8a-4352-419a-9dd7-3ba07b16d7c0:0",
+          "document_id": "2deffd8a-4352-419a-9dd7-3ba07b16d7c0",
+          "document_name": "pubmedqa-16418930.txt",
+          "page": null,
+          "score": 0.6005459781217115,
+          "text": "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 16418930 Research question: Landolt C and snellen e acuity: differences in strabismus amblyopia? PubMed abstract context: Assessment of visual acuity depends on the optotypes used for measurement. The ability to recognize different optotypes differs even if their critical details appear under the same visual angle. Since optotypes are evaluated on individuals with good visual acuity and without eye disorders, differences in the lower visual acuity range cannot be excluded. In this\n\nPatient Information\nDocument type: clinical_document\n{\"age\": \"8\"}"
+        },
+        {
+          "chunk_id": "2deffd8a-4352-419a-9dd7-3ba07b16d7c0:2",
+          "document_id": "2deffd8a-4352-419a-9dd7-3ba07b16d7c0",
+          "document_name": "pubmedqa-16418930.txt",
+          "page": null,
+          "score": 0.592990096641664,
+          "text": "Patient Information\nDocument type: clinical_document\n{\"age\": \"8\"}\n\nClinical Notes\nDocument type: clinical_document\n[{\"heading\": \"PubMedQA PMID\", \"text\": \"16418930\"}, {\"heading\": \"Research question\", \"text\": \"Landolt C and snellen e acuity: differences in strabismus amblyopia?\"}, {\"heading\": \"PubMed abstract context\", \"text\": \"Assessment of visual acuity depends on the optotypes used for measurement. The ability to recognize different optotypes differs even if their critical details appear under the same visual angle. Since optotypes are evaluated on individuals with good visual acuity and without eye disorders, differences in the lower visual acuity range cannot be excluded. In this study, visual acuity measured with the Snellen E was compared to the Landolt C acuity.\"}]"
+        },
+        {
+          "chunk_id": "d8e6229d-bc4c-45bb-8ab7-d76ffe39be09:0",
+          "document_id": "d8e6229d-bc4c-45bb-8ab7-d76ffe39be09",
+          "document_name": "pubmedqa-9488747.txt",
+          "page": null,
+          "score": 0.24223186558359563,
+          "text": "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 9488747 Research question: Syncope during bathing in infants, a pediatric form of water-induced urticaria? PubMed abstract context: Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome. Eight infants aged 2 to 15 months were admitted during a period of 6 years; they suffered from similar maladies in the bath: on immersion, they became pale, hypotonic, still\n\nClinical Notes\nDocument type: clinical_document\n[{\"heading\": \"PubMedQA PMID\", \"text\": \"9488747\"}, {\"heading\": \"Research question\", \"text\": \"Syncope during bathing in infants, a pediatric form of water-induced urticaria?\"}, {\"heading\": \"PubMed abstract context\", \"text\": \"Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome.\"}]"
+        }
+      ],
+      "retrieval": {
+        "gold_doc_recall@1": 1.0,
+        "gold_doc_precision@1": 1.0,
+        "gold_doc_recall@3": 1.0,
+        "gold_doc_precision@3": 0.333,
+        "gold_doc_recall@5": 1.0,
+        "gold_doc_precision@5": 0.2,
+        "mrr": 1.0
+      },
+      "answer_token_f1": 0.298,
+      "faithfulness_proxy_supported_sentence_rate": 1.0
+    },
+    {
+      "pmid": "9488747",
+      "indexed_document_id": "d8e6229d-bc4c-45bb-8ab7-d76ffe39be09",
+      "question": "Syncope during bathing in infants, a pediatric form of water-induced urticaria?",
+      "reference": "\"Aquagenic maladies\" could be a pediatric form of the aquagenic urticaria.",
+      "gold_label": "yes",
+      "predicted_label": "maybe",
+      "answer": "Based on the retrieved PubMed abstract evidence, the following findings are relevant to the question:\n\n* Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice [1, 2].\n* The prognosis is uncertain because of the risk of sudden infant death syndrome [1, 2].\n* Eight infants aged 2 to 15 months were admitted during a period of 6 years; they suffered from similar maladies in the bath: on immersion, they became pale, hypotonic, and still [1, 2].\n* The ability to recognize different optotypes differs even if their critical details appear under the same visual angle [3].\n* Differences in the lower visual acuity range cannot be excluded [3].\n\nHowever, there is no direct evidence to support the claim that syncope during bathing in infants is a pediatric form of water-induced urticaria. The evidence provided does not mention urticaria or any allergic reactions related to water.\n\nTherefore, the answer to the question is:\n\nFinal decision: maybe",
+      "route": "direct_rag",
+      "latency_ms": 3171.79,
+      "time_to_first_token_ms": null,
+      "retrieved_contexts": [
+        "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 9488747 Research question: Syncope during bathing in infants, a pediatric form of water-induced urticaria? PubMed abstract context: Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome. Eight infants aged 2 to 15 months were admitted during a period of 6 years; they suffered from similar maladies in the bath: on immersion, they became pale, hypotonic, still\n\nClinical Notes\nDocument type: clinical_document\n[{\"heading\": \"PubMedQA PMID\", \"text\": \"9488747\"}, {\"heading\": \"Research question\", \"text\": \"Syncope during bathing in infants, a pediatric form of water-induced urticaria?\"}, {\"heading\": \"PubMed abstract context\", \"text\": \"Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome.\"}]",
+        "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 9488747 Research question: Syncope during bathing in infants, a pediatric form of water-induced urticaria? PubMed abstract context: Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome. Eight infants aged 2 to 15 months were admitted during a period of 6 years; they suffered from similar maladies in the bath: on immersion, they became pale, hypotonic, still\n\nClinical Notes\nDocument type: clinical_document\n[{\"heading\": \"PubMedQA PMID\", \"text\": \"9488747\"}, {\"heading\": \"Research question\", \"text\": \"Syncope during bathing in infants, a pediatric form of water-induced urticaria?\"}, {\"heading\": \"PubMed abstract context\", \"text\": \"Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome.\"}]",
+        "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 16418930 Research question: Landolt C and snellen e acuity: differences in strabismus amblyopia? PubMed abstract context: Assessment of visual acuity depends on the optotypes used for measurement. The ability to recognize different optotypes differs even if their critical details appear under the same visual angle. Since optotypes are evaluated on individuals with good visual acuity and without eye disorders, differences in the lower visual acuity range cannot be excluded. In this\n\nPatient Information\nDocument type: clinical_document\n{\"age\": \"8\"}"
+      ],
+      "retrieved_context_metadata": [
+        {
+          "chunk_id": "d8e6229d-bc4c-45bb-8ab7-d76ffe39be09:0",
+          "document_id": "d8e6229d-bc4c-45bb-8ab7-d76ffe39be09",
+          "document_name": "pubmedqa-9488747.txt",
+          "page": null,
+          "score": 0.6559126754722637,
+          "text": "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 9488747 Research question: Syncope during bathing in infants, a pediatric form of water-induced urticaria? PubMed abstract context: Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome. Eight infants aged 2 to 15 months were admitted during a period of 6 years; they suffered from similar maladies in the bath: on immersion, they became pale, hypotonic, still\n\nClinical Notes\nDocument type: clinical_document\n[{\"heading\": \"PubMedQA PMID\", \"text\": \"9488747\"}, {\"heading\": \"Research question\", \"text\": \"Syncope during bathing in infants, a pediatric form of water-induced urticaria?\"}, {\"heading\": \"PubMed abstract context\", \"text\": \"Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome.\"}]"
+        },
+        {
+          "chunk_id": "d8e6229d-bc4c-45bb-8ab7-d76ffe39be09:1",
+          "document_id": "d8e6229d-bc4c-45bb-8ab7-d76ffe39be09",
+          "document_name": "pubmedqa-9488747.txt",
+          "page": null,
+          "score": 0.6571942507854868,
+          "text": "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 9488747 Research question: Syncope during bathing in infants, a pediatric form of water-induced urticaria? PubMed abstract context: Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome. Eight infants aged 2 to 15 months were admitted during a period of 6 years; they suffered from similar maladies in the bath: on immersion, they became pale, hypotonic, still\n\nClinical Notes\nDocument type: clinical_document\n[{\"heading\": \"PubMedQA PMID\", \"text\": \"9488747\"}, {\"heading\": \"Research question\", \"text\": \"Syncope during bathing in infants, a pediatric form of water-induced urticaria?\"}, {\"heading\": \"PubMed abstract context\", \"text\": \"Apparent life-threatening events in infants are a difficult and frequent problem in pediatric practice. The prognosis is uncertain because of risk of sudden infant death syndrome.\"}]"
+        },
+        {
+          "chunk_id": "2deffd8a-4352-419a-9dd7-3ba07b16d7c0:0",
+          "document_id": "2deffd8a-4352-419a-9dd7-3ba07b16d7c0",
+          "document_name": "pubmedqa-16418930.txt",
+          "page": null,
+          "score": 0.22458451475218214,
+          "text": "Document Summary\nDocument type: clinical_document\nPubMedQA PMID: 16418930 Research question: Landolt C and snellen e acuity: differences in strabismus amblyopia? PubMed abstract context: Assessment of visual acuity depends on the optotypes used for measurement. The ability to recognize different optotypes differs even if their critical details appear under the same visual angle. Since optotypes are evaluated on individuals with good visual acuity and without eye disorders, differences in the lower visual acuity range cannot be excluded. In this\n\nPatient Information\nDocument type: clinical_document\n{\"age\": \"8\"}"
+        }
+      ],
+      "retrieval": {
+        "gold_doc_recall@1": 1.0,
+        "gold_doc_precision@1": 1.0,
+        "gold_doc_recall@3": 1.0,
+        "gold_doc_precision@3": 0.333,
+        "gold_doc_recall@5": 1.0,
+        "gold_doc_precision@5": 0.2,
+        "mrr": 1.0
+      },
+      "answer_token_f1": 0.082,
+      "faithfulness_proxy_supported_sentence_rate": 0.667
+    }
+  ]
+}

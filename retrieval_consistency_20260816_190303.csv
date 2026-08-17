@@ -1,0 +1,10 @@
+query,session_depth,route,rewritten_query,tool_calls,retrieved_count,kept_count,filtered_count,retrieved_ids,jaccard_vs_fresh
+What does my latest cholesterol panel mean?,0,clarify,What does my latest cholesterol panel mean?,document_search,0,0,5,,1.0
+What does my latest cholesterol panel mean?,5,clarify,What does my latest cholesterol panel mean?,document_search,0,0,5,,1.0
+What does my latest cholesterol panel mean?,10,clarify,What does my latest cholesterol panel mean?,document_search,0,0,5,,1.0
+Are there any drug interactions with my current prescriptions?,0,clarify,Are there any drug interactions with my current prescriptions?,document_search,0,0,5,,1.0
+Are there any drug interactions with my current prescriptions?,5,clarify,Are there any drug interactions with my current prescriptions?,document_search,0,0,5,,1.0
+Are there any drug interactions with my current prescriptions?,10,clarify,Are there any drug interactions with my current prescriptions?,document_search,0,0,5,,1.0
+What did my last MRI report say about my knee?,0,retrieve,What did my last MRI report say about my knee?,document_search,0,0,5,,1.0
+What did my last MRI report say about my knee?,5,retrieve,What did my last MRI report say about my knee?,document_search,0,0,5,,1.0
+What did my last MRI report say about my knee?,10,retrieve,What did my last MRI report say about my knee?,document_search,0,0,5,,1.0

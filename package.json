@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "dev": "next dev frontend",
+    "build": "next build frontend",
+    "start": "python -m http.server 3000 --directory frontend/out"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.1",
+    "@supabase/supabase-js": "^2.110.3",
+    "next": "^15.4.2",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  }
+}

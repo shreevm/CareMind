@@ -7,7 +7,16 @@ httpx
 langgraph
 python-dotenv
 redis
+psycopg[binary]
 pinecone
 pypdf
+pillow
+pytesseract
 pytest
 ragas
+mcp
+transformers
+accelerate
+torch
+sentence-transformers>=5.7.0
+elevenlabs

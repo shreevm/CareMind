@@ -1,0 +1,211 @@
+<mxfile host="Electron" modified="2026-07-21T18:31:29.000Z" agent="Antigravity" version="21.0.0" type="device">
+  <diagram id="caremind-system-architecture" name="CareMind Architecture">
+    <mxGraphModel dx="1000" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" adaptiveColors="auto" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Header Title -->
+        <mxCell id="title" value="CAREMIND SYSTEM ARCHITECTURE &amp;amp; MULTI-AGENT ROUTING FLOW" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=18;fontColor=#1a237e;" vertex="1" parent="1">
+          <mxGeometry x="327" y="30" width="1000" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- Clients (Row 0) -->
+        <mxCell id="client_web" value="&lt;b&gt;Web App Browser&lt;/b&gt;&lt;br&gt;Frontend UI (Vite/React)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="520" y="120" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="client_vscode" value="&lt;b&gt;VS Code Extension&lt;/b&gt;&lt;br&gt;Sidebar Assistant" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="960" y="120" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- API Gateway (Row 1) -->
+        <mxCell id="api_gateway" value="&lt;b&gt;FastAPI API Gateway&lt;/b&gt;&lt;br&gt;AuthN/AuthZ &amp;amp; Validation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="740" y="270" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Preflight & Caches (Row 2) -->
+        <mxCell id="redis_cache" value="&lt;b&gt;Redis Semantic Cache&lt;/b&gt;&lt;br&gt;Exact &amp;amp; Semantic Responses" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="300" y="420" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="preflight_checks" value="&lt;b&gt;Preflight Checks&lt;/b&gt;&lt;br&gt;Emergency/Injection?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="750" y="410" width="140" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="guardrail_emergency" value="&lt;b&gt;Emergency Redirect&lt;/b&gt;&lt;br&gt;Direct Warning Output" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="420" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="guardrail_injection" value="&lt;b&gt;Prompt Injection&lt;/b&gt;&lt;br&gt;Security Block" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="420" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Orchestrator & Tracing (Row 3) -->
+        <mxCell id="caremind_agent" value="&lt;b&gt;CareMindAgent&lt;/b&gt;&lt;br&gt;StateGraph Orchestrator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="520" y="570" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="supervisor_agent" value="&lt;b&gt;SupervisorAgent&lt;/b&gt;&lt;br&gt;Query Route Classifier" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="750" y="560" width="140" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="api_langsmith" value="&lt;b&gt;LangSmith Tracing&lt;/b&gt;&lt;br&gt;Observability &amp;amp; Logs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="570" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Specialized Agents (Row 4) -->
+        <mxCell id="agent_doc_rag" value="&lt;b&gt;DocumentRAGAgent&lt;/b&gt;&lt;br&gt;Doc Vector RAG &amp;amp; Citations" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="720" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="agent_med_edu" value="&lt;b&gt;MedicalEducationAgent&lt;/b&gt;&lt;br&gt;Edu Corpus &amp;amp; PubMed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="300" y="720" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="agent_imaging" value="&lt;b&gt;ImagingAgent&lt;/b&gt;&lt;br&gt;CXR/CT/MRI Reports" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="520" y="720" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="agent_comparison" value="&lt;b&gt;ReportComparisonAgent&lt;/b&gt;&lt;br&gt;Multi-Report Diff Analysis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="740" y="720" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="agent_clarification" value="&lt;b&gt;ClarificationAgent&lt;/b&gt;&lt;br&gt;Voice/Ambiguity Context" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="960" y="720" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="agent_direct" value="&lt;b&gt;DirectResponseAgent&lt;/b&gt;&lt;br&gt;Product Help &amp;amp; Greeting" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="720" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Data Stores & External APIs (Row 5 - Shifted to start at Col 2) -->
+        <mxCell id="db_supabase" value="&lt;b&gt;Supabase Postgres&lt;/b&gt;&lt;br&gt;pgvector &amp;amp; Schema Storage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="520" y="870" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="db_sqlite" value="&lt;b&gt;SQLite Local Store&lt;/b&gt;&lt;br&gt;Doc Metadata &amp;amp; Session History" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="740" y="870" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="api_pubmed" value="&lt;b&gt;NCBI PubMed API&lt;/b&gt;&lt;br&gt;External Literature RAG" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="960" y="870" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="api_nvidia" value="&lt;b&gt;NVIDIA NIM APIs&lt;/b&gt;&lt;br&gt;LLM (Llama 3.1) &amp;amp; Embeddings" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="870" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="api_ollama" value="&lt;b&gt;Ollama Local Service&lt;/b&gt;&lt;br&gt;Local Embedding/LLM Fallback" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="870" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Connectors (Edges) -->
+        <mxCell id="edge_web_to_api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="client_web" target="api_gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_vscode_to_api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="client_vscode" target="api_gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_api_to_preflight" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="api_gateway" target="preflight_checks">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge_preflight_to_cache" value="Cache Lookup" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;labelBackgroundColor=default;" edge="1" parent="1" source="preflight_checks" target="redis_cache">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_preflight_to_emergency" value="Emergency" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;labelBackgroundColor=default;" edge="1" parent="1" source="preflight_checks" target="guardrail_emergency">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_preflight_to_injection" value="Injection" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;labelBackgroundColor=default;" edge="1" parent="1" source="preflight_checks" target="guardrail_injection">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_preflight_to_agent" value="Safe Request" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;labelBackgroundColor=default;" edge="1" parent="1" source="preflight_checks" target="caremind_agent">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge_agent_to_supervisor" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="caremind_agent" target="supervisor_agent">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_agent_to_langsmith" value="Traces" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;labelBackgroundColor=default;" edge="1" parent="1" source="caremind_agent" target="api_langsmith">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Supervisor routing to specialized agents -->
+        <mxCell id="edge_super_to_doc_rag" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="supervisor_agent" target="agent_doc_rag">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_super_to_med_edu" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="supervisor_agent" target="agent_med_edu">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_super_to_imaging" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="supervisor_agent" target="agent_imaging">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_super_to_comparison" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="supervisor_agent" target="agent_comparison">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_super_to_clarification" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="supervisor_agent" target="agent_clarification">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_super_to_direct" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="supervisor_agent" target="agent_direct">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Agents to data stores / services -->
+        <mxCell id="edge_doc_rag_to_supabase" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="agent_doc_rag" target="db_supabase">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_doc_rag_to_sqlite" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="agent_doc_rag" target="db_sqlite">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge_med_edu_to_pubmed" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="agent_med_edu" target="api_pubmed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_med_edu_to_nvidia" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="agent_med_edu" target="api_nvidia">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge_imaging_to_supabase" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="agent_imaging" target="db_supabase">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_imaging_to_sqlite" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="agent_imaging" target="db_sqlite">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge_comp_to_supabase" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="agent_comparison" target="db_supabase">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_comp_to_sqlite" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="agent_comparison" target="db_sqlite">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge_clarify_to_sqlite" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="agent_clarification" target="db_sqlite">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge_direct_to_nvidia" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;" edge="1" parent="1" source="agent_direct" target="api_nvidia">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge_nvidia_fallback" value="Local Fallback" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;strokeColor=#555555;labelBackgroundColor=default;" edge="1" parent="1" source="api_nvidia" target="api_ollama">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Legend Box (Bottom-Left) -->
+        <mxCell id="legend_bg" value="&lt;b&gt;LEGEND&lt;/b&gt;" style="swimlane;startSize=24;fillColor=#f5f5f5;strokeColor=#cccccc;html=1;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="80" y="830" width="380" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_process" value="Process / Client Flow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="legend_bg">
+          <mxGeometry x="15" y="35" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_decision" value="Decision / Router" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;" vertex="1" parent="legend_bg">
+          <mxGeometry x="200" y="30" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_emergency" value="Emergency Redirect" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="legend_bg">
+          <mxGeometry x="15" y="85" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_security" value="Security Block" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="legend_bg">
+          <mxGeometry x="200" y="85" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_agent" value="Specialized Agent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="legend_bg">
+          <mxGeometry x="15" y="135" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_db_api" value="Database / Cache / API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="legend_bg">
+          <mxGeometry x="200" y="135" width="160" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Scope Box (Below Legend) -->
+        <mxCell id="scope_box" value="&lt;b&gt;Scope:&lt;/b&gt; CareMind System Architecture &amp;amp; Routing Flow&lt;br&gt;&lt;b&gt;Author:&lt;/b&gt; Antigravity Agent&lt;br&gt;&lt;b&gt;Date:&lt;/b&gt; 2026-07-21" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#cccccc;align=left;spacingLeft=10;fontSize=11;html=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1050" width="380" height="75" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

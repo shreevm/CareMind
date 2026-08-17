@@ -1,0 +1,8 @@
+
+        Patient Presentation:
+        - Chief Complaint: Fatigue and shortness of breath for 2 weeks
+        - Vital Signs: BP 120/80, HR 88, RR 18, Temp 98.6F
+        - Lab Results: Hemoglobin 11.2 g/dL, WBC 8.1, Platelets 250
+        - Assessment: Iron deficiency anemia
+        - Plan: Iron supplementation and follow-up CBC in 6 weeks
+        
