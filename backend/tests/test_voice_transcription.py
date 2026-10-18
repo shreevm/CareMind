@@ -78,6 +78,15 @@ def test_observe_node_passes_transcript_metadata_unchanged_to_trace() -> None:
     agent.tools.store.list_documents.return_value = []
     agent.tools.store.list_images.return_value = []
     agent.tools.external_literature_available.return_value = False
+    agent.llm = Mock()
+    agent.llm.route_conversation.return_value = {
+        "route": "clarify",
+        "scope": "uncertain",
+        "resolved_query": "bonjour docteur",
+        "topic": "",
+        "confidence": 0.9,
+        "clarification": "Comment puis-je vous aider ?",
+    }
     transcript = TranscriptMetadata(
         text="bonjour docteur",
         confidence=0.93,

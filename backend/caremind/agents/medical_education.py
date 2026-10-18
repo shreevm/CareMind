@@ -21,6 +21,7 @@ class MedicalEducationAgent:
         history = updates.pop("history")
         return {
             **updates,
+            "evidence_chunks": chunks,
             "answer": self.llm.answer_medical(
                 question=request.message,
                 chunks=chunks,
@@ -49,7 +50,9 @@ class MedicalEducationAgent:
             )
             used_tools.append("pubmed_literature_search")
         chunks = [*external_chunks, *medlineplus_chunks, *internal_chunks]
-        history = self.memory.load(request.session_id, request.workspace_id)
+        # The router has resolved topic references. Patient history is not evidence
+        # for a general question, even when the report remains available later.
+        history = []
         evidence_chars = sum(len(chunk.text or "") for chunk in chunks)
         model_context_used = (
             self.tools.embeddings.settings.medical_education_model_context_enabled

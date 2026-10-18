@@ -79,6 +79,10 @@ def test_documents_existing_alone_do_not_force_general_question_to_retrieve() ->
     agent.supervisor_agent = SupervisorAgent()
     agent.safety = SafetyLayer()
 
+    # Mocked structured decision: this tests dispatch, not model accuracy.
+    agent.llm = Mock()
+    agent.llm.route_conversation.return_value = {'route': 'medical_education', 'scope': 'general', 'resolved_query': 'how does one get pneumonia', 'topic': '', 'confidence': 0.95, 'clarification': ''}
+
     state = agent._observe_node(
         {"request": ChatRequest(message="how does one get pneumonia"), "started_at": 0.0}
     )
@@ -102,12 +106,16 @@ def test_active_context_does_not_capture_standalone_general_education_question()
     agent.supervisor_agent = SupervisorAgent()
     agent.safety = SafetyLayer()
 
+    # Mocked structured decision: this tests dispatch, not model accuracy.
+    agent.llm = Mock()
+    agent.llm.route_conversation.return_value = {'route': 'medical_education', 'scope': 'general', 'resolved_query': 'Explain pneumonia symptoms in simple language.', 'topic': '', 'confidence': 0.95, 'clarification': ''}
+
     state = agent._observe_node(
         {"request": ChatRequest(message="Explain pneumonia symptoms in simple language."), "started_at": 0.0}
     )
 
     assert state["context_resolution"]["used_context"] is False
-    assert state["context_resolution"]["reason"] == "standalone_general_education_query"
+    assert state["context_resolution"]["reason"] == "structured_model_routing"
     assert agent._planned_route(state["request"].message, state["observations"]) == "medical_education"
 
 
@@ -126,12 +134,16 @@ def test_active_context_does_not_capture_general_topic_followup_wording() -> Non
     agent.supervisor_agent = SupervisorAgent()
     agent.safety = SafetyLayer()
 
+    # Mocked structured decision: this tests dispatch, not model accuracy.
+    agent.llm = Mock()
+    agent.llm.route_conversation.return_value = {'route': 'medical_education', 'scope': 'general', 'resolved_query': 'What about pneumonia?', 'topic': '', 'confidence': 0.95, 'clarification': ''}
+
     state = agent._observe_node(
         {"request": ChatRequest(message="What about pneumonia?"), "started_at": 0.0}
     )
 
     assert state["context_resolution"]["used_context"] is False
-    assert state["context_resolution"]["reason"] == "standalone_general_education_query"
+    assert state["context_resolution"]["reason"] == "structured_model_routing"
     assert agent._planned_route(state["request"].message, state["observations"]) == "medical_education"
 
 
@@ -160,12 +172,16 @@ def test_no_context_typo_heavy_low_iron_symptoms_routes_to_education() -> None:
     agent.supervisor_agent = SupervisorAgent()
     agent.safety = SafetyLayer()
 
+    # Mocked structured decision: this tests dispatch, not model accuracy.
+    agent.llm = Mock()
+    agent.llm.route_conversation.return_value = {'route': 'medical_education', 'scope': 'general', 'resolved_query': 'tell me about sympotms of hvaing less iron content?', 'topic': '', 'confidence': 0.95, 'clarification': ''}
+
     state = agent._observe_node(
         {"request": ChatRequest(message="tell me about sympotms of hvaing less iron content?"), "started_at": 0.0}
     )
 
     assert state["context_resolution"]["used_context"] is False
-    assert state["context_resolution"]["reason"] == "standalone_general_education_query"
+    assert state["context_resolution"]["reason"] == "structured_model_routing"
     assert agent._planned_route(state["request"].message, state["observations"]) == "medical_education"
 
 
@@ -181,11 +197,15 @@ def test_no_context_bare_iron_content_routes_to_education() -> None:
     agent.supervisor_agent = SupervisorAgent()
     agent.safety = SafetyLayer()
 
+    # Mocked structured decision: this tests dispatch, not model accuracy.
+    agent.llm = Mock()
+    agent.llm.route_conversation.return_value = {'route': 'medical_education', 'scope': 'general', 'resolved_query': 'tell me about iron content?', 'topic': '', 'confidence': 0.95, 'clarification': ''}
+
     state = agent._observe_node(
         {"request": ChatRequest(message="tell me about iron content?"), "started_at": 0.0}
     )
 
-    assert state["context_resolution"]["reason"] == "standalone_general_education_query"
+    assert state["context_resolution"]["reason"] == "structured_model_routing"
     assert agent._planned_route(state["request"].message, state["observations"]) == "medical_education"
 
 
@@ -212,12 +232,16 @@ def test_general_education_followup_wins_over_stale_document_context() -> None:
     agent.supervisor_agent = SupervisorAgent()
     agent.safety = SafetyLayer()
 
+    # Mocked structured decision: this tests dispatch, not model accuracy.
+    agent.llm = Mock()
+    agent.llm.route_conversation.return_value = {'route': 'medical_education', 'scope': 'general', 'resolved_query': 'What is the treatment for low iron content in the body?', 'topic': '', 'confidence': 0.95, 'clarification': ''}
+
     state = agent._observe_node(
         {"request": ChatRequest(message="so wats the cure for that?"), "started_at": 0.0}
     )
 
     assert state["context_resolution"]["used_context"] is True
-    assert state["context_resolution"]["reason"] == "general_education_contextual_followup"
+    assert state["context_resolution"]["reason"] == "structured_model_routing"
     assert "low iron" in state["request"].message.lower()
     assert agent._planned_route(state["request"].message, state["observations"]) == "medical_education"
 
@@ -240,12 +264,16 @@ def test_general_education_otc_followup_reuses_previous_topic() -> None:
     agent.supervisor_agent = SupervisorAgent()
     agent.safety = SafetyLayer()
 
+    # Mocked structured decision: this tests dispatch, not model accuracy.
+    agent.llm = Mock()
+    agent.llm.route_conversation.return_value = {'route': 'medical_education', 'scope': 'general', 'resolved_query': 'What over the counter supplements are used for low iron content in the body?', 'topic': '', 'confidence': 0.95, 'clarification': ''}
+
     state = agent._observe_node(
         {"request": ChatRequest(message="any over the counter tablets please?"), "started_at": 0.0}
     )
 
     assert state["context_resolution"]["used_context"] is True
-    assert state["context_resolution"]["reason"] == "general_education_contextual_followup"
+    assert state["context_resolution"]["reason"] == "structured_model_routing"
     assert "low iron" in state["request"].message.lower()
     assert agent._planned_route(state["request"].message, state["observations"]) == "medical_education"
 
@@ -262,6 +290,10 @@ def test_typo_heavy_otc_supplement_question_routes_to_education() -> None:
     agent.supervisor_agent = SupervisorAgent()
     agent.safety = SafetyLayer()
 
+    # Mocked structured decision: this tests dispatch, not model accuracy.
+    agent.llm = Mock()
+    agent.llm.route_conversation.return_value = {'route': 'medical_education', 'scope': 'general', 'resolved_query': 'any over the counter tablets please for deficieny in rion?', 'topic': '', 'confidence': 0.95, 'clarification': ''}
+
     state = agent._observe_node(
         {
             "request": ChatRequest(message="any over the counter tablets please for deficieny in rion?"),
@@ -269,7 +301,7 @@ def test_typo_heavy_otc_supplement_question_routes_to_education() -> None:
         }
     )
 
-    assert state["context_resolution"]["reason"] == "standalone_general_education_query"
+    assert state["context_resolution"]["reason"] == "structured_model_routing"
     assert agent._planned_route(state["request"].message, state["observations"]) == "medical_education"
 
 
@@ -288,12 +320,16 @@ def test_general_medical_followup_uses_previous_education_topic() -> None:
     agent.supervisor_agent = SupervisorAgent()
     agent.safety = SafetyLayer()
 
+    # Mocked structured decision: this tests dispatch, not model accuracy.
+    agent.llm = Mock()
+    agent.llm.route_conversation.return_value = {'route': 'medical_education', 'scope': 'general', 'resolved_query': 'What causes pneumonia?', 'topic': '', 'confidence': 0.95, 'clarification': ''}
+
     state = agent._observe_node(
         {"request": ChatRequest(message="What causes it?"), "started_at": 0.0}
     )
 
     assert state["context_resolution"]["used_context"] is True
-    assert state["context_resolution"]["reason"] == "general_education_contextual_followup"
+    assert state["context_resolution"]["reason"] == "structured_model_routing"
     assert "pneumonia" in state["request"].message.lower()
     assert agent._planned_route(state["request"].message, state["observations"]) == "medical_education"
 
@@ -312,6 +348,10 @@ def test_new_general_medical_topic_does_not_reuse_old_education_topic() -> None:
     agent.tools.external_literature_available.return_value = False
     agent.supervisor_agent = SupervisorAgent()
     agent.safety = SafetyLayer()
+
+    # Mocked structured decision: this tests dispatch, not model accuracy.
+    agent.llm = Mock()
+    agent.llm.route_conversation.return_value = {'route': 'medical_education', 'scope': 'general', 'resolved_query': 'What causes pneumonia?', 'topic': '', 'confidence': 0.95, 'clarification': ''}
 
     state = agent._observe_node(
         {"request": ChatRequest(message="What causes pneumonia?"), "started_at": 0.0}
@@ -333,6 +373,10 @@ def test_planner_routes_xray_question_to_imaging_agent() -> None:
     agent.tools.external_literature_available.return_value = False
     agent.supervisor_agent = SupervisorAgent()
     agent.safety = SafetyLayer()
+
+    # Mocked structured decision: this tests dispatch, not model accuracy.
+    agent.llm = Mock()
+    agent.llm.route_conversation.return_value = {'route': 'imaging', 'scope': 'documents', 'resolved_query': 'What does this X-ray show?', 'topic': '', 'confidence': 0.95, 'clarification': ''}
 
     state = agent._observe_node(
         {"request": ChatRequest(message="What does this X-ray show?"), "started_at": 0.0}

@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import AuthGate from "./AuthGate";
+import { authHeaders } from "./auth";
+import { readyMessageAttachments, consumeMessageAttachments } from "./composer-attachments.mjs";
 
 const CHAT_HISTORY_KEY = "caremind-chat-history";
 const CHAT_MODE_KEY = "caremind-chat-mode";
@@ -27,7 +30,10 @@ function apiErrorMessage(body, fallback) {
 }
 
 async function apiRequest(path, options = {}) {
-  const response = await fetch(`${apiBase()}${path}`, options);
+  const response = await fetch(`${apiBase()}${path}`, {
+    ...options,
+    headers: { ...(options.headers || {}), ...(await authHeaders()) },
+  });
   if (!response.ok) {
     const detail = apiErrorMessage(await response.text(), response.statusText);
     throw new Error(detail);
@@ -51,7 +57,7 @@ async function transcribeAudio(blob, { sessionId, startedAt, endedAt }) {
 async function streamChat(payload, handlers = {}) {
   const response = await fetch(`${apiBase()}/chat/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
     body: JSON.stringify(payload),
   });
   if (!response.ok || !response.body) {
@@ -340,7 +346,7 @@ function TracePanel({ trace, data }) {
       {!!trace.retrieved_chunks?.length && (
         <div className="trace-contexts">
           {trace.retrieved_chunks.map((chunk, index) => (
-            <details key={chunk.chunk_id || index}>
+            <details key={`${chunk.chunk_id || "chunk"}:${index}`}>
               <summary>
                 {chunk.document_name || "source"}
                 {chunk.score == null ? "" : ` | score ${Number(chunk.score).toFixed(3)}`}
@@ -416,7 +422,7 @@ function MicIcon() {
   );
 }
 
-export default function CareMindPage() {
+function CareMindApp() {
   const [mounted, setMounted] = useState(false);
   const [sessionId, setSessionId] = useState("");
   const [history, setHistory] = useState([]);
@@ -617,6 +623,7 @@ export default function CareMindPage() {
                 status: "Ready",
                 assetId: uploaded.document_id || uploaded.image_id || "",
                 assetKind: uploaded.image_id ? "image" : "document",
+                serverAttachmentId: uploaded.attachment_id || "",
               }
             : item,
         ),
@@ -647,6 +654,10 @@ export default function CareMindPage() {
     event.preventDefault();
     const message = draft.trim();
     if (!message) return;
+    const readyAttachments = readyMessageAttachments(composerAttachments);
+    // Attachments belong to this send; uploaded assets remain in the file library.
+    setComposerAttachments((items) => consumeMessageAttachments(items, readyAttachments));
+    const hasImageAttachment = readyAttachments.some((item) => item.assetKind === "image");
     setDraft("");
     const transcript = pendingTranscript?.text === message ? pendingTranscript : null;
     setPendingTranscript(null);
@@ -665,7 +676,8 @@ export default function CareMindPage() {
           message,
           session_id: sessionId,
           workspace_id: "default",
-          modality: transcript ? "voice" : "text",
+          modality: transcript ? "voice" : hasImageAttachment ? "image" : "text",
+          attachment_ids: readyAttachments.map((item) => item.serverAttachmentId),
           transcript,
           response_mode: chatMode,
           debug: chatMode === "agent",
@@ -933,6 +945,12 @@ export default function CareMindPage() {
           <div className="disclaimer-banner" role="note">
             CareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.
           </div>
+          {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && (
+            <div className="disclaimer-banner" role="note">
+              Public demo: use synthetic reports only. Reports are shared and may reset.
+              The first request can take about a minute while the server wakes up.
+            </div>
+          )}
           <div className="mode-switch" aria-label="Chat mode">
             <button
               type="button"
@@ -1027,5 +1045,13 @@ export default function CareMindPage() {
         </form>
       </section>
     </main>
+  );
+}
+
+export default function CareMindPage() {
+  return (
+    <AuthGate>
+      <CareMindApp />
+    </AuthGate>
   );
 }

@@ -1,0 +1,52 @@
+name: Deploy frontend to GitHub Pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+      NEXT_PUBLIC_DEMO_MODE: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Check backend URL
+        shell: bash
+        run: |
+          node -e 'const u = new URL(process.env.NEXT_PUBLIC_API_BASE_URL); if (u.protocol !== "https:" || u.username || u.password || u.search || u.hash || ["localhost", "127.0.0.1"].includes(u.hostname)) throw new Error("Set NEXT_PUBLIC_API_BASE_URL to your public HTTPS backend URL without credentials or query parameters");'
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+      - run: npm ci
+      - name: Build static frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/out
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

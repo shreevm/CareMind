@@ -74,8 +74,8 @@ This checklist tracks implementation against `specs.md` and `plan.md` for the we
 - [x] Save eval runs to JSON (`backend/eval_runs/<timestamp>.json`).
 - [x] Compare against baseline (`baseline.json`).
 - [x] Emit PASS/WARN/FAIL results per metric.
-- [ ] Add MIRAGE integration for medical_knowledge_qa (multi‑choice, question‑only retrieval).
-- [ ] Add PubMedQA integration for PubMed‑style questions.
+- [ ] Add MIRAGE integration for medical_knowledge_qa (multi‑choice, question‑only retrieval). (not in `evaluate.py`; no MIRAGE code exists)
+- [x] Add PubMedQA integration for PubMed‑style questions (`backend/evaluate_pubmedqa.py`; wire into `evaluate.py` + baseline diff).
 - [ ] Support multiple eval configs (`eval_config_id` with different LLM/embedding/retriever combos).
 - [ ] Add A/B diff reporting between configs (offline).
 
@@ -132,7 +132,7 @@ This checklist tracks implementation against `specs.md` and `plan.md` for the we
 
 ## Phase 11: Observability
 
-- [ ] Add LangSmith tracing to LangGraph runs (router, retrieval, tools, generation, guardrails).
+- [ ] Add LangSmith tracing to LangGraph runs (only a `langsmith_enabled` flag exists; no `@traceable`/tracer calls found) (router, retrieval, tools, generation, guardrails).
 - [x] Add Prometheus metrics (requests, latency, cache, tools, eval).
 - [ ] Add Grafana‑ready dashboards/panels (latency, route mix, cache hit rate, eval trends).
 - [ ] Tag traces and metrics with `workspace_id`, `route`, `cache_hit`, `eval_config_id`, and `variant` (for A/B).
@@ -166,3 +166,20 @@ This checklist tracks implementation against `specs.md` and `plan.md` for the we
 - [ ] Document `specs.md`, `plan.md`, and `tasks.md` relationships.
 - [ ] Add demo script (upload → QA → comparison → voice → imaging → eval run).
 - [ ] Record or script a demo that showcases MIRAGE/PubMedQA evaluation and A/B testing.
+
+
+---
+
+## Phase 15: Hardening (added after codebase review)
+
+- [ ] P0: Derive `workspace_id` from authenticated user server-side; stop trusting client `workspace_id` (FR-30).
+- [ ] P0: Fail closed when auth is not configured; move CORS origins to config.
+- [ ] P0: Make tests use `tmp_path`; `git rm --cached data/test_uploads` and add `data/test_uploads/` to `.gitignore` (FR-32).
+- [ ] P0: Remove `retrieval_consistency_*.csv` from git; keep `hf.env` ignored and rotate the HF token if ever pushed.
+- [ ] P1: Exclude `load_test.py` from default pytest collection (`pyproject.toml` `addopts`/`collect_ignore`) so plain `pytest` passes.
+- [ ] P1: Replace the 82 `print(` calls in backend with `logger` (they bypass redaction; spec forbids sensitive content in logs).
+- [ ] P1: Fix mojibake in `specs.md` (UTF-8 saved as cp1252) and commit the ~27 uncommitted modified files in logical commits.
+- [ ] P1: Split `agent.py` (1.8k lines), `llm.py`, `store.py`, `vectorstore.py` by responsibility.
+- [x] Citation validation module + tests (FR-28).
+- [x] Deterministic routing module + routing eval script (FR-29).
+- [x] Demo deployment + Grafana Cloud configs (FR-31).

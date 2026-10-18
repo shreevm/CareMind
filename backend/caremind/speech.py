@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import logging
 from io import BytesIO
 import math
 from typing import Any
 
 from .config import Settings
 from .schemas import TranscriptMetadata
+
+
+logger = logging.getLogger(__name__)
 
 
 class SpeechTranscriptionError(RuntimeError):
@@ -25,14 +29,18 @@ class SpeechToTextService:
             raise SpeechTranscriptionError("The elevenlabs Python package is not installed.") from exc
 
         client = ElevenLabs(api_key=self.settings.elevenlabs_api_key)
-        result = client.speech_to_text.convert(
-            file=BytesIO(audio),
-            model_id="scribe_v2",
-            tag_audio_events=True,
-            language_code=None,
-            diarize=False,
-            timestamps_granularity="word",
-        )
+        try:
+            result = client.speech_to_text.convert(
+                file=BytesIO(audio),
+                model_id="scribe_v2",
+                tag_audio_events=True,
+                language_code=None,
+                diarize=False,
+                timestamps_granularity="word",
+            )
+        except Exception as exc:
+            logger.warning("speech.transcribe_failed error=%s", type(exc).__name__)
+            raise SpeechTranscriptionError("Transcription failed. Please try recording again.") from exc
         words = self._get(result, "words") or []
         timestamps = [self._timestamp(word) for word in words]
         detected_language = self._get(result, "language_code")

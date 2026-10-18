@@ -84,6 +84,8 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"),
     )
     supabase_jwks_url: str | None = Field(default=None, alias="SUPABASE_JWKS_URL")
+    supabase_jwt_secret: str | None = Field(default=None, alias="SUPABASE_JWT_SECRET")
+    supabase_jwt_audience: str = Field(default="authenticated", alias="SUPABASE_JWT_AUDIENCE")
     supabase_db_url: str | None = Field(default=None, alias="SUPABASE_DB_URL")
     supabase_vector_table: str = Field(default="caremind_document_chunks_qwen3_1024", alias="SUPABASE_VECTOR_TABLE")
     supabase_match_function: str = Field(default="match_caremind_document_chunks_qwen3_1024", alias="SUPABASE_MATCH_FUNCTION")
@@ -100,6 +102,12 @@ class Settings(BaseSettings):
     semantic_cache_enabled: bool = Field(default=True, alias="CAREMIND_SEMANTIC_CACHE_ENABLED")
     semantic_cache_threshold: float = Field(default=0.92, alias="CAREMIND_SEMANTIC_CACHE_THRESHOLD")
     min_retrieval_similarity: float = Field(default=0.5, alias="CAREMIND_MIN_RETRIEVAL_SIMILARITY")
+    evidence_sufficiency_enabled: bool = Field(default=True, alias="CAREMIND_EVIDENCE_SUFFICIENCY_ENABLED")
+    evidence_sufficiency_enforcement: bool = Field(default=False, alias="CAREMIND_EVIDENCE_SUFFICIENCY_ENFORCEMENT")
+    citation_validation_enabled: bool = Field(default=True, alias="CAREMIND_CITATION_VALIDATION_ENABLED")
+    citation_structural_enforcement: bool = Field(default=True, alias="CAREMIND_CITATION_STRUCTURAL_ENFORCEMENT")
+    citation_semantic_enforcement: bool = Field(default=False, alias="CAREMIND_CITATION_SEMANTIC_ENFORCEMENT")
+    citation_min_coverage: float = Field(default=1.0, ge=0.0, le=1.0, alias="CAREMIND_CITATION_MIN_COVERAGE")
 
     external_literature_search_enabled: bool = Field(default=True, alias="CAREMIND_EXTERNAL_SEARCH_ENABLED")
     ncbi_base_url: str = Field(
@@ -157,7 +165,9 @@ class Settings(BaseSettings):
     document_vlm_min_confidence: float = Field(default=0.55, alias="CAREMIND_DOCUMENT_VLM_MIN_CONFIDENCE")
     document_vlm_timeout_seconds: float = Field(default=60.0, alias="CAREMIND_DOCUMENT_VLM_TIMEOUT_SECONDS")
     radiology_vision_base_url: str | None = Field(default=None, alias="CAREMIND_RADIOLOGY_VISION_BASE_URL")
-    radiology_vision_model: str = Field(default="google/medgemma-4b-it", alias="CAREMIND_RADIOLOGY_VISION_MODEL")
+    radiology_vision_model: str = Field(default="google/medgemma-1.5-4b-it", alias="CAREMIND_RADIOLOGY_VISION_MODEL")
+    radiology_vision_api_key: str | None = Field(default=None, alias="CAREMIND_RADIOLOGY_VISION_API_KEY")
+    radiology_vision_timeout_seconds: float = Field(default=90.0, alias="CAREMIND_RADIOLOGY_VISION_TIMEOUT_SECONDS")
     transcript_min_confidence: float = Field(default=0.65, alias="CAREMIND_TRANSCRIPT_MIN_CONFIDENCE")
 
     eval_fail_threshold: float = Field(default=0.05, alias="CAREMIND_EVAL_FAIL_THRESHOLD")
@@ -169,6 +179,10 @@ class Settings(BaseSettings):
 
     basic_auth_username: str | None = Field(default=None, alias="CAREMIND_USERNAME")
     basic_auth_password: str | None = Field(default=None, alias="CAREMIND_PASSWORD")
+    cors_origins: str = Field(
+        default="https://shreevm.github.io,http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:3001,http://localhost:3001",
+        alias="CAREMIND_CORS_ORIGINS",
+    )
 
     langchain_tracing_v2: bool = Field(
         default=False,

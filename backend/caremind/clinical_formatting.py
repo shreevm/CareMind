@@ -10,49 +10,70 @@ def clinical_summary_answer(chunks: list[RetrievedChunk]) -> str:
     all_citations = citation_span(len(chunks))
     patient_profile = extract_patient_profile(combined)
     findings = extract_holter_findings(combined) or extract_clinical_findings(evidence_texts)
-    triggered = extract_unique_matches(
-        combined,
-        [
-            r"Patient Triggered[^:\n]*(?::|\n)?\s*[^\n.]{0,160}",
-            r"Manual[^:\n]*(?::|\n)?\s*[^\n.]{0,160}",
-        ],
-    )
+    if not findings:
+        findings = extract_explicit_findings(evidence_texts)
 
-    lines = [
-        f"From the retrieved evidence, the uploaded material contains the following documented clinical details {all_citations}.",
-    ]
+    lines = ["Patient summary"]
     if patient_profile:
-        lines.extend(
-            [
-                "",
-                "Patient profile:",
-                f"- Name: {patient_profile.get('name', 'Not found')} [1]",
-                f"- ID: {patient_profile.get('id', 'Not found')} [1]",
-                f"- Age: {patient_profile.get('age', 'Not found')} [1]",
-                f"- Gender: {patient_profile.get('gender', 'Not found')} [1]",
-            ]
+        profile = ", ".join(
+            f"{label}: {patient_profile[key]}"
+            for key, label in (("name", "name"), ("id", "ID"), ("age", "age"), ("gender", "gender"))
+            if patient_profile.get(key)
         )
-    lines.extend(["", "Key findings:"])
+        if profile:
+            lines.append(f"- {profile} {all_citations}.")
+    lines.extend(["", "Key findings"])
     if findings:
-        for finding in findings[:10]:
-            lines.append(f"- {finding} {all_citations}")
+        for finding in findings[:6]:
+            lines.append(f"- {finding.rstrip('.')} {all_citations}.")
     else:
-        lines.append("- I found rhythm-monitoring entries, but the extracted PDF text does not include a clear final impression section. [1]")
-
-    if triggered:
-        lines.append("")
-        lines.append("Patient/manual event evidence:")
-        for item in triggered[:3]:
-            lines.append(f"- {item} [1]")
-
-    lines.extend(
-        [
-            "",
-            "Evidence-grounded synthesis:",
-            f"- The summary above is limited to findings explicitly present in the retrieved report text; diagnosis, treatment decisions, and unsupported clinical significance are not provided in the retrieved evidence {all_citations}.",
-        ]
-    )
+        lines.append(f"- No clear clinical finding could be summarized from the extracted text {all_citations}.")
+    uncertain = extract_uncertain_fragments(evidence_texts)
+    if uncertain:
+        lines.extend(["", "Uncertainty"])
+        for item in uncertain[:3]:
+            lines.append(
+                f"- The extraction contains an unclear value: {item}; verify it in the source report {all_citations}."
+            )
     return "\n".join(lines)
+
+
+def extract_explicit_findings(evidence_texts: list[str]) -> list[str]:
+    """Select readable clinical statements without echoing serialized extraction payloads."""
+    findings: list[str] = []
+    prefixes = ("finding:", "impression:", "diagnosis:", "measurement:", "summary:")
+    clinical_terms = re.compile(
+        r"\b(?:hemoglobin|glucose|creatinine|platelet|wbc|rbc|blood pressure|heart rate|"
+        r"diagnosis|impression|finding|normal|abnormal|positive|negative)\b",
+        re.IGNORECASE,
+    )
+    for text in evidence_texts:
+        for raw_line in text.splitlines():
+            line = re.sub(r"\s+", " ", raw_line).strip(" -*")
+            lowered = line.lower()
+            if not 8 <= len(line) <= 260 or "{" in line or "}" in line or '"raw_text"' in lowered:
+                continue
+            if is_ambiguous_fragment(line):
+                continue
+            if lowered.startswith(prefixes) or clinical_terms.search(line):
+                finding = re.sub(r"^(?:finding|impression|diagnosis|measurement|summary):\s*", "", line, flags=re.I)
+                if finding and not finding.endswith(":"):
+                    findings.append(finding.rstrip(".") + ".")
+    return dedupe_findings(findings)
+
+
+def extract_uncertain_fragments(evidence_texts: list[str]) -> list[str]:
+    results: list[str] = []
+    for text in evidence_texts:
+        for raw_line in text.splitlines():
+            line = re.sub(r"\s+", " ", raw_line).strip(" -*")
+            if is_ambiguous_fragment(line) and 3 <= len(line) <= 160 and "{" not in line and "}" not in line:
+                results.append(line.rstrip("."))
+    return dedupe_findings(results)
+
+
+def is_ambiguous_fragment(text: str) -> bool:
+    return bool(re.search(r"(?:\?{2,}|\b(?:unclear|unknown|unreadable|illegible|ambiguous|null)\b|[:=]\s*\?)", text, re.I))
 
 
 def citation_span(chunk_count: int) -> str:
@@ -184,11 +205,11 @@ def extract_patient_profile(text: str) -> dict[str, str]:
         }
 
     def find(pattern: str) -> str:
-        match = re.search(pattern, compact, flags=re.IGNORECASE)
+        match = re.search(pattern, text, flags=re.IGNORECASE | re.MULTILINE)
         return match.group(1).strip() if match else ""
 
     profile = {
-        "name": find(r"(?:patient name|name)\s*[:=-]\s*([A-Za-z ,.'-]+)"),
+        "name": find(r"(?:patient name|name)\s*[:=-]\s*([A-Za-z ,.'-]+?)(?=\r?$)"),
         "id": find(r"(?:patient id|mrn|medical record(?: number)?|id)\s*[:#=-]?\s*([A-Za-z0-9-]+)"),
         "age": find(r"age\s*[:=-]?\s*(\d{1,3}\s*(?:yrs?|years?)?)"),
         "gender": find(r"(?:gender|sex)\s*[:=-]?\s*(male|female|man|woman|nonbinary|non-binary|other)"),

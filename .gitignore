@@ -1,4 +1,7 @@
 .env
+.env.grafana
+*.env
+!.env.example
 .venv/
 node_modules/
 __pycache__/
@@ -19,3 +22,5 @@ eval_reports/
 backend/eval_reports/
 vscode-extension/node_modules/
 vscode-extension/out/
+data/test_uploads/
+retrieval_consistency_*.csv

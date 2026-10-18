@@ -21,6 +21,7 @@ dependencies = [
     "pillow",
     "pytesseract",
     "pytest",
+    "pyjwt[crypto]",
     "ragas",
     "mcp",
     "transformers",
@@ -30,6 +31,7 @@ dependencies = [
     "elevenlabs",
     "sentence-transformers>=5.7.0",
     "bitsandbytes>=0.50.1",
+    "typesafe-sdk>=0.7.1",
 ]
 
 [tool.uv] 
@@ -42,3 +44,6 @@ torch = { index = "pytorch-cpu" }
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
+
+[tool.pytest.ini_options]
+addopts = "--ignore=backend/tests/load_test.py"

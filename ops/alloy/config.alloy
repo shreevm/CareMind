@@ -1,0 +1,22 @@
+prometheus.scrape "caremind" {
+  targets = [{ "__address__" = sys.env("CAREMIND_METRICS_TARGET") }]
+  job_name = "caremind-api"
+  metrics_path = "/metrics"
+  scheme = sys.env("CAREMIND_METRICS_SCHEME")
+  scrape_interval = "15s"
+  basic_auth {
+    username = sys.env("CAREMIND_METRICS_USERNAME")
+    password = sys.env("CAREMIND_METRICS_PASSWORD")
+  }
+  forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_CLOUD_PROM_URL")
+    basic_auth {
+      username = sys.env("GRAFANA_CLOUD_PROM_USER")
+      password = sys.env("GRAFANA_CLOUD_PROM_TOKEN")
+    }
+  }
+}

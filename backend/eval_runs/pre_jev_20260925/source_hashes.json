@@ -1,0 +1,238 @@
+[
+    {
+        "path":  "backend/tests\\__init__.py",
+        "sha256":  "E8A29C4548B395810934368A77AF6DDDBF4C9F665BE25F5BD64AB196099C8BBB"
+    },
+    {
+        "path":  "backend/caremind\\__init__.py",
+        "sha256":  "7D85D372D19C14F70B2BFE162FA9E96E15309A20EDE48A3CD482E860A9FF049B"
+    },
+    {
+        "path":  "backend/caremind\\vectorstore.py",
+        "sha256":  "56F9020F5FCA0432C3D4D5D4B0248AAD6726120E7CD4F16599074AA193638785"
+    },
+    {
+        "path":  "backend/caremind\\validation.py",
+        "sha256":  "7525AAF2681E6849C10E94826380F067CD238055EFFA037D416913AB7C98F3C6"
+    },
+    {
+        "path":  "backend/caremind\\tools.py",
+        "sha256":  "7A1EA0A01C624E03F9105930B9EB904D0CDB05D6D32224252F8F5A4C205223E6"
+    },
+    {
+        "path":  "backend/caremind\\store.py",
+        "sha256":  "E19459144DCEDCDCD1FCEA328E1278CCB22AFD858C2598664C64E2D9CBE88173"
+    },
+    {
+        "path":  "backend/caremind\\speech.py",
+        "sha256":  "9320B410A5EE3C2EEA4A59A722456267F79B53383C1B51BA2191CCAAFDFB9461"
+    },
+    {
+        "path":  "backend/caremind\\schemas.py",
+        "sha256":  "22F9235C7382A13C2839DF58F8A5DE610A659A039A15807559F281C765EC7851"
+    },
+    {
+        "path":  "backend/caremind\\safety.py",
+        "sha256":  "5C2B71DB68080CEF93E06056D97433C73C0DAE65EFB8C3F4FD4691385B7D7DA8"
+    },
+    {
+        "path":  "backend/caremind\\ocr_postprocessing.py",
+        "sha256":  "1CDB47628EAB6DDD80DDEDE9EA6432A4FA4307A13063126D32223BF13357C794"
+    },
+    {
+        "path":  "backend/caremind\\ocr.py",
+        "sha256":  "77A1F49DADC1BC7A1B9148534B34AFDA56144D9F73D7FE8C5DFA70BCF21BA3F1"
+    },
+    {
+        "path":  "backend/caremind\\observability.py",
+        "sha256":  "798AC57EF3E8730D79126FB10B44D8C8A41C1CF7AC2257ABE7AC8C82D045E935"
+    },
+    {
+        "path":  "backend/caremind\\metrics.py",
+        "sha256":  "80DD6661A80A5D51717F86BDB8BFA1059B36FBC8EB1FF2F05D85270D19FEE961"
+    },
+    {
+        "path":  "backend/caremind\\memory.py",
+        "sha256":  "5825448AF1FE1BF89E6DDFAB6EEFD2A6A45F06CB5ED3123C90AA98E333B8A776"
+    },
+    {
+        "path":  "backend/caremind\\mcp_server.py",
+        "sha256":  "C07B990647F0F7FC7D8ED74F568D7172D9A9E1CC9B1E55D16E4E814268192EE9"
+    },
+    {
+        "path":  "backend/caremind\\llm.py",
+        "sha256":  "45EB7F2E796856E86A35E1A35E1149400F25672E3AF45612EFE031B7740BB726"
+    },
+    {
+        "path":  "backend/caremind\\intent.py",
+        "sha256":  "C6C17EAFF50F10ECB04322A979B25AEE2C1A198E0E4A9144E792CA3CB3042B00"
+    },
+    {
+        "path":  "backend/caremind\\ingestion.py",
+        "sha256":  "326E5212954C79CE4E5CB64C28CF198D62CC2FDB548AE8A9470568E263A4554A"
+    },
+    {
+        "path":  "backend/caremind\\external_literature.py",
+        "sha256":  "5D3A3BD09318283E8AFA3C8744D99CBAA49E2E4DD95CA88DFB5030D86545CE13"
+    },
+    {
+        "path":  "backend/caremind\\embeddings.py",
+        "sha256":  "C030BFBE97A61152374CCC61AA680ED6C7DF93B32B5AD92B9EC236ADAA768156"
+    },
+    {
+        "path":  "backend/caremind\\education.py",
+        "sha256":  "8B9BEE3982C43B9DCD0ADA3A171CD842DDAD832D22EFF99913B6635A3CF580FC"
+    },
+    {
+        "path":  "backend/caremind\\config.py",
+        "sha256":  "B32ACADF374D6F40B52C0E6D49E1C573C6B393BB5BD51ECA04DDBC7EE143534E"
+    },
+    {
+        "path":  "backend/tests\\test_voice_transcription.py",
+        "sha256":  "4AFD8AF4447F06D0D04B6BB297A87CD8B29CBE9255F264E32D7AE759D0C94851"
+    },
+    {
+        "path":  "backend/caremind\\clinical_formatting.py",
+        "sha256":  "999EAFF9E566E2475FD1CD9100DB5A712D860CACD5C7643F262E803D5C646557"
+    },
+    {
+        "path":  "backend/tests\\test_vectorstore.py",
+        "sha256":  "1181915DDBE970C9C8BFC7B732EF4C75651F56A6E0412C48CB86C437541BCDF2"
+    },
+    {
+        "path":  "backend/caremind\\citation_validation.py",
+        "sha256":  "50DD4526F5D68754757642F88FE383F85B1F7430904EF8AA4D9547848A010EC5"
+    },
+    {
+        "path":  "backend/tests\\test_safety.py",
+        "sha256":  "59DD255D4A1A9F75F84C04A238B94CF35FFF37B78DEE4EAEEFF273101F7A1688"
+    },
+    {
+        "path":  "backend/tests\\test_routing.py",
+        "sha256":  "F0B16E82B2CBD7482CAB6C800F9710DA8F2D0EA215EC7A7E9DB32CB5413A3A53"
+    },
+    {
+        "path":  "backend/tests\\test_retrieval_pipeline.py",
+        "sha256":  "9556C4BC2205E48A46182D3AA9E2FD825D232B4B0C383EC8CBB2C46FF146F339"
+    },
+    {
+        "path":  "backend/tests\\test_reasoning_separation.py",
+        "sha256":  "3564D4B059ADA86C6BB37CB248EBA95C3A9F6AF8983ED7AA8BFC1A34E1C11F03"
+    },
+    {
+        "path":  "backend/tests\\test_qwen_embeddings.py",
+        "sha256":  "91778D01ACA35F26926A246A77963A4E25ED62EB29CD0DEC570F0D79C832D5A1"
+    },
+    {
+        "path":  "backend/tests\\test_ocr.py",
+        "sha256":  "4980D771CFBB86D96D008AD6570A33C2AA32E3F8F2A31DE0E38B7FFDBCD75739"
+    },
+    {
+        "path":  "backend/tests\\test_message_attachments.py",
+        "sha256":  "1D56F2993D019AE69F03AAB5CF713B19CA52FE74762BFD21274A809D1FF53959"
+    },
+    {
+        "path":  "backend/tests\\test_medical_education_agent.py",
+        "sha256":  "82DC2D00B3B855480E65990B0C68EF60CCAFC47DBE1698E9CE7D110C5D5EF6AE"
+    },
+    {
+        "path":  "backend/tests\\test_imaging_agent.py",
+        "sha256":  "C2641010FC343463298FFF882F97450C1D9808C4BAF83482F257BAE9A275C8E8"
+    },
+    {
+        "path":  "backend/tests\\test_external_literature.py",
+        "sha256":  "0A6D5410029703E721C404FB7B7FCB552F771B28B7D4A7B49254DE5397C1D706"
+    },
+    {
+        "path":  "backend/tests\\test_embeddings.py",
+        "sha256":  "6CE17F2F9599FEF6692A29436C7B5650FFBA1B3EE2A3F5438D1985E7296AC79D"
+    },
+    {
+        "path":  "backend/tests\\test_document_understanding_agent.py",
+        "sha256":  "371111D82A5D331A0FCBAC67FBED19B8D5AFCC1E361CB5CC7882555844BD211A"
+    },
+    {
+        "path":  "backend/tests\\test_document_rag_agent.py",
+        "sha256":  "DE080A88844DADD0C918CD994C45A1682D2AF2CADECB22DAFF6B7A5E48D77F35"
+    },
+    {
+        "path":  "backend/tests\\test_contextual_followups.py",
+        "sha256":  "610604F0E80A9E4C5A25849CAB48D7F15FA513FBF7F0E2CE934696DE28CCF19C"
+    },
+    {
+        "path":  "backend/tests\\test_citation_validation.py",
+        "sha256":  "FB6CD263B13367DA2EF57CB59B96B719B3CD5E4F1A2FBFEEA541328C0E8257B7"
+    },
+    {
+        "path":  "backend/tests\\test_cache_bypass.py",
+        "sha256":  "817D2BAEF83D7C9A42C708E82417607A2E41C248EE443249BBCDCB4CFA6A5931"
+    },
+    {
+        "path":  "backend/tests\\test_agent_flows.py",
+        "sha256":  "3BBD20FD4CEDD6255260EE848B7274C02A37130F3597B0B18CE7BB59DCADD3E9"
+    },
+    {
+        "path":  "backend/tests\\load_test.py",
+        "sha256":  "6182922C1A939E984C6842FDAAE852337480DF193D6CF4C63FB9397D61D4FC9B"
+    },
+    {
+        "path":  "backend/caremind\\agent.py",
+        "sha256":  "911003B79E2FE144185C85818A944B9EC3ACA7A715129AAABE4788B3DDF97A9B"
+    },
+    {
+        "path":  "backend/caremind\\agents\\__init__.py",
+        "sha256":  "6AFDBC1237ED7CF408BCB0F01AAB36C2BBE4F9192950EE49A2BEE8AEC753CA81"
+    },
+    {
+        "path":  "backend/caremind\\agents\\supervisor.py",
+        "sha256":  "7F1C1A793E83A14CCFB8F86B8FD365D9ED3718F03659C9B2CE7C5B7CDB382B8F"
+    },
+    {
+        "path":  "backend/caremind\\agents\\medical_education.py",
+        "sha256":  "DB94BC6D00C17994B2F0FF5B026DABD377ECEDFE3730443B31F12B2D90A4F2BA"
+    },
+    {
+        "path":  "backend/caremind\\agents\\imaging.py",
+        "sha256":  "CD3C62A01B31779C6D5B713114092F8F72CDF6E82D1FCC4A045D722B409AFB8D"
+    },
+    {
+        "path":  "backend/caremind\\agents\\document_understanding.py",
+        "sha256":  "B936F5383C7752EE8633A8CC0678EF40C3928CCC5CAC27ED1AA7C3382C057A2D"
+    },
+    {
+        "path":  "backend/caremind\\agents\\document_rag.py",
+        "sha256":  "4D3CC3EA00992918AE69BF84D6721BACC0C3F530523560DAD29E351988CDE906"
+    },
+    {
+        "path":  "backend/caremind\\agents\\direct.py",
+        "sha256":  "EAEFBCB3B6C2D57E71A7134FE50F9DEC37A4FCAB63F4F22F58289DFE302937AD"
+    },
+    {
+        "path":  "backend/caremind\\agents\\conversation_resolver.py",
+        "sha256":  "70C0DB13CB054FFE3E49429A8D22398399C969D3051ACCAC33310643D51C7FB3"
+    },
+    {
+        "path":  "backend/caremind\\agents\\comparison.py",
+        "sha256":  "D412F21CD68FCF8B611D944E6BF210C881909F8BFC4036437B1F775482D85669"
+    },
+    {
+        "path":  "backend/caremind\\agents\\clarification.py",
+        "sha256":  "C9B886077FFC50AEDABD389D90511FD70B12BF5DF04AD7C8A50E20828BDB96B0"
+    },
+    {
+        "path":  "backend/app.py",
+        "sha256":  "FB570EC9E7A8E82E986885CCEE8E1AD7F8A4790538DF7A65D44EB553A7E2BD5E"
+    },
+    {
+        "path":  "backend/evaluate.py",
+        "sha256":  "1194FD08FF24390DC79C44748A8DF3336BEBE8C08C8258A39414B2B1AF0C09E4"
+    },
+    {
+        "path":  "backend/eval_questions.jsonl",
+        "sha256":  "54A6205657AE1640496DC2FC15299C8952F43EBD9419EAEF3B99E3BEE81E1981"
+    },
+    {
+        "path":  "uv.lock",
+        "sha256":  "7F2A63ED52FB4EAB31148E9A37EA9725F88AB1F26CCD29ECE2A61A091EC45697"
+    }
+]

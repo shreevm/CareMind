@@ -6,6 +6,42 @@ import pytest
 from backend.caremind.llm import GenerationContentUnavailable, LLMClient
 
 
+def test_generation_metadata_records_duration_timeout_attempt_and_finish_reason(monkeypatch) -> None:
+    observed = {}
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"choices": [{"finish_reason": "stop", "message": {"content": "Verified summary [1]."}}]}
+
+    class Client:
+        def __init__(self, timeout):
+            observed["timeout"] = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def post(self, *args, **kwargs):
+            return Response()
+
+    monkeypatch.setattr("backend.caremind.llm.httpx.Client", Client)
+    client = LLMClient(Settings(_env_file=None, NVIDIA_API_KEY="test"))
+    client.answer(question="Summarize", chunks=[], history=[])
+
+    assert observed["timeout"] == 60
+    assert client.last_generation_metadata["attempt_count"] == 1
+    assert client.last_generation_metadata["retry_count"] == 0
+    assert client.last_generation_metadata["finish_reason"] == "stop"
+    assert client.last_generation_metadata["provider_duration_ms"] >= 0
+    assert client.last_generation_metadata["duration_ms"] >= 0
+    assert client.last_generation_metadata["fallback_selected"] is False
+
+
 def test_default_nvidia_model_and_env_override(monkeypatch) -> None:
     monkeypatch.delenv("NVIDIA_CHAT_MODEL", raising=False)
 

@@ -1,5 +1,5 @@
 ﻿# CareMind Specs
-Version: 0.8.0
+Version: 0.9.0
 Status: Web Chatbot MVP + Observability/Eval Loop + Guardrails + Multimodal Clinical Agent + Routing/Cache Fixes + External Literature Tool + A/B Eval + Chat Attachments
 
 ---
@@ -478,6 +478,31 @@ Do not incorrectly treat `language_probability` as overall transcription confide
 - Variant assignment sticky per user/workspace (hashâ€‘based), tracked in metrics as `variant`.
 
 ---
+
+### FR-28 Citation Validation
+
+- Implemented in `backend/caremind/citation_validation.py`. Every citation in a final answer must resolve to a chunk actually retrieved for that request; unresolved citations are stripped or the answer is downgraded. Covered by `test_citation_validation.py`.
+- Citation pass rate in the eval report is computed from this validator, not from string matching.
+
+### FR-29 Deterministic Routing Layer
+
+- `backend/caremind/routing.py` holds hard-rule routing priorities (emergency > current-message attachments > active-context follow-up > general education). `evaluate_routing.py` reports route accuracy independently of answer quality (FR-22). Covered by `test_conversation_routing.py`.
+
+### FR-30 Tenant Isolation and Auth (REQUIRED, currently NOT met)
+
+- `workspace_id` must be derived server-side from the authenticated Supabase user, never accepted from the client (form/query) as authority.
+- Authentication must fail closed: if no credentials/JWT are configured, the API refuses to start outside `CAREMIND_ENV=dev`.
+- CORS origins come from configuration (`CAREMIND_CORS_ORIGINS`), not hard-coded.
+- Per-user rate limits on `/chat`, `/upload`, `/speech/transcribe`; upload size limits already exist (`CAREMIND_MAX_UPLOAD_BYTES`).
+
+### FR-31 Demo Deployment
+
+- `Dockerfile.demo`, `requirements-demo.txt`, `render.yaml`, `.github/workflows/pages.yml` provide a keyless public demo (static frontend on GitHub Pages, API on Render). Demo mode must use synthetic data only (Section 11.3).
+- Grafana Cloud shipping via `compose.grafana-cloud.yml`, `ops/alloy/`, `ops/grafana/cloud/` (see `docs/grafana-cloud.md`).
+
+### FR-32 Test Hygiene
+
+- Tests must write only to pytest `tmp_path`; they must not create files under `data/`. CI runs `pytest backend/tests --ignore=backend/tests/load_test.py`; `load_test.py` (locust) is excluded from default collection.
 
 ## 9. Architecture
 

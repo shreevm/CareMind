@@ -81,10 +81,10 @@ def vectorstore(settings, store):
 
 
 @pytest.fixture
-def ingestion(settings, store, embeddings, vectorstore):
+def ingestion(settings, store, embeddings, vectorstore, tmp_path):
     """Create ingestion service for testing."""
     return DocumentIngestionService(
-        upload_dir=Path("data/test_uploads"),
+        upload_dir=tmp_path / "uploads",
         store=store,
         embeddings=embeddings,
         vectorstore=vectorstore,

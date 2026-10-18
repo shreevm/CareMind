@@ -67,21 +67,19 @@ class ReportComparisonAgent:
                     },
                 ],
             }
-        comparison = self.tools.compare_reports(
-            [doc.document_id for doc in documents[:2]],
-            workspace_id=request.workspace_id,
-        )
         return {
-            "answer": comparison.summary,
-            "citations": comparison.citations,
-            "retrieved_chunks": [citation.model_dump(mode="json") for citation in comparison.citations],
-            "tool_calls": [*tool_calls, "compare_reports"],
+            "answer": "Please attach the two reports you want to compare so CareMind does not select the wrong records.",
+            "citations": [],
+            "retrieved_chunks": [],
+            "tool_calls": tool_calls,
+            "require_citations": False,
             "trace_steps": [
                 *trace_steps,
                 {
                     "node": "report_comparison_agent",
-                    "tool": "compare_reports",
-                    "document_count": min(len(documents), 2),
+                    "tool": "request_report_selection",
+                    "document_count": len(documents),
+                    "selection_reason": "multiple_workspace_documents_without_explicit_selection",
                     "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
                 },
             ],

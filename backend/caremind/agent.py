@@ -18,18 +18,22 @@ from .agents import (
     SupervisorAgent,
 )
 from .llm import LLMClient
+from .routing import decide
+from .citation_validation import looks_like_raw_evidence_dump, validate_answer_citations
+from .clinical_formatting import clinical_summary_answer
 from .memory import ConversationMemory
 from .metrics import metrics
 from .observability import chat_request_inputs, chat_response_outputs, trace_block
 from .intent import asks_general_medical_not_document, explicitly_general_topic
 from .safety import SafetyLayer
-from .schemas import ChatRequest, ChatResponse, Citation
+from .schemas import ChatRequest, ChatResponse, Citation, RetrievedChunk
 from .tools import DocumentTools
 
 
 class AgentState(TypedDict, total=False):
     request: ChatRequest
     original_message: str
+    submitted_attachments: list[Any]
     context_resolution: dict[str, Any]
     session_state: dict[str, Any]
     conversation_entities: dict[str, Any]
@@ -49,6 +53,8 @@ class AgentState(TypedDict, total=False):
     tool_calls: list[str]
     require_citations: bool
     retrieved_chunks: list[dict]
+    evidence_chunks: list[RetrievedChunk]
+    force_safe_summary: bool
     no_relevant_document_evidence: bool
     trace_steps: list[dict]
     response: ChatResponse
@@ -99,7 +105,7 @@ class CareMindAgent:
         self.direct_agent = DirectResponseAgent()
         self.clarification_agent = ClarificationAgent()
         self.document_rag_agent = DocumentRAGAgent(tools, llm, memory)
-        self.imaging_agent = ImagingAgent(tools)
+        self.imaging_agent = ImagingAgent(tools, llm)
         self.medical_education_agent = MedicalEducationAgent(tools, llm, memory)
         self.report_comparison_agent = ReportComparisonAgent(tools)
         self.graph = self._build_graph()
@@ -148,99 +154,19 @@ class CareMindAgent:
     def stream_events(self, request: ChatRequest) -> Iterator[dict[str, Any]]:
         started_at = time.perf_counter()
         yield {"event": "start", "data": {"session_id": request.session_id, "workspace_id": request.workspace_id}}
-        preflight = self._preflight_response(request)
-        if preflight is not None:
-            yield from self._stream_completed_response(preflight, started_at)
-            return
-
-        state: AgentState = {"request": request, "started_at": started_at}
-        state = self._observe_node(state)
-        state = self._conversation_resolver_node(state)
-        state = self._plan_node(state)
-        yield {
-            "event": "route",
-            "data": {
-                "route": self._public_route(state["route"], state["request"]),
-                "internal_route": state["route"],
-            },
-        }
-        state = self._check_cache_node(state)
-        if state.get("cache_hit"):
-            yield from self._stream_completed_response(state["response"], started_at)
-            return
-
-        route = state["route"]
-        if route == "retrieve":
-            updates = self.document_rag_agent.prepare(
-                state["request"],
-                state.get("tool_calls", []),
-                state.get("trace_steps", []),
-            )
-            state = {**state, **updates}
-            if "answer" not in state:
-                yield from self._stream_llm_answer(state, medical=False, started_at=started_at)
-        elif route == "medical_education":
-            updates = self.medical_education_agent.prepare(
-                state["request"],
-                state.get("tool_calls", []),
-                state.get("trace_steps", []),
-            )
-            state = {**state, **updates}
-            yield from self._stream_llm_answer(state, medical=True, started_at=started_at)
-        else:
-            node = {
-                "direct": self._direct_node,
-                "clarify": self._clarify_node,
-                "emergency_redirect": self._emergency_redirect_node,
-                "compare": self._compare_node,
-                "imaging": self._imaging_node,
-            }.get(route)
-            if node is None:
-                state = {**state, "answer": self.clarification_agent.answer(), "route": "clarify"}
-            else:
-                state = node(state)
-
-        if "response" not in state:
-            state = self._validate_node(state)
-            state = self._finalize_node(state)
-        response = self._with_streaming_trace(state["response"], started_at, state.get("time_to_first_token_ms"))
-        streamed_answer = state.get("streamed_answer", "")
-        if not streamed_answer:
-            yield from self._stream_completed_response(response, started_at)
-            return
-        if response.answer.startswith(streamed_answer):
-            suffix = response.answer[len(streamed_answer) :]
-            if suffix:
-                yield {"event": "delta", "data": {"text": suffix}}
-        elif response.answer != streamed_answer:
-            yield {"event": "replace", "data": {"answer": response.answer}}
-        yield {"event": "final", "data": response.model_dump(mode="json")}
-
-    def _stream_llm_answer(self, state: AgentState, *, medical: bool, started_at: float) -> Iterator[dict[str, Any]]:
-        chunks = state.pop("chunks", [])
-        history = state.pop("history", [])
-        pieces: list[str] = []
-        first_token_ms: float | None = None
+        # Both transports execute the same validated graph. Buffer generation until
+        # validation/repair completes so rejected drafts never reach the browser.
         yield {"event": "status", "data": {"stage": "generating"}}
-        for delta in self.llm.answer_stream(
-            question=state["request"].message,
-            chunks=chunks,
-            history=history,
-            medical=medical,
-            response_language=state["request"].response_language,
-            allow_medical_model_context=bool(state.get("medical_model_context_used")),
-        ):
-            if first_token_ms is None:
-                first_token_ms = round((time.perf_counter() - started_at) * 1000, 2)
-                yield {"event": "metric", "data": {"time_to_first_token_ms": first_token_ms}}
-            pieces.append(delta)
-            yield {"event": "delta", "data": {"text": delta}}
-        state["answer"] = "".join(pieces)
-        state["streamed_answer"] = state["answer"]
-        state["time_to_first_token_ms"] = first_token_ms
+        response = self.answer(request)
+        yield {"event": "route", "data": {"route": response.route}}
+        yield from self._stream_completed_response(response, started_at)
 
     def _stream_completed_response(self, response: ChatResponse, started_at: float) -> Iterator[dict[str, Any]]:
-        response = self._with_streaming_trace(response, started_at, 0.0)
+        response = self._with_streaming_trace(
+            response,
+            started_at,
+            round((time.perf_counter() - started_at) * 1000, 2),
+        )
         for index in range(0, len(response.answer), 64):
             yield {"event": "delta", "data": {"text": response.answer[index : index + 64]}}
         yield {"event": "final", "data": response.model_dump(mode="json")}
@@ -422,7 +348,11 @@ class CareMindAgent:
             current_attachments=current_attachments,
         )
         effective_message = context_resolution["rewritten_query"]
-        effective_request = request.model_copy(update={"message": effective_message, "response_language": response_language})
+        effective_request = request.model_copy(update={
+            "message": effective_message, "response_language": response_language,
+            "attachment_ids": [item.id for item in current_attachments]
+            if context_resolution.get("routing_decision", {}).get("scope") == "documents" else [],
+        })
         transcript_metadata = request.transcript.model_dump(mode="json") if request.transcript is not None else {}
         observations = {
             "workspace_id": request.workspace_id,
@@ -460,6 +390,7 @@ class CareMindAgent:
             **state,
             "request": effective_request,
             "original_message": original_message,
+            "submitted_attachments": current_attachments,
             "context_resolution": context_resolution,
             "session_state": context_resolution.get("session_state", {}),
             "conversation_entities": context_resolution.get("conversation_entities", {}),
@@ -689,7 +620,7 @@ class CareMindAgent:
     def _clarify_node(self, state: AgentState) -> AgentState:
         return {
             **state,
-            "answer": self.clarification_agent.answer(),
+            "answer": state.get("context_resolution", {}).get("routing_decision", {}).get("clarification") or self.clarification_agent.answer(),
         }
 
     def _emergency_redirect_node(self, state: AgentState) -> AgentState:
@@ -730,6 +661,40 @@ class CareMindAgent:
         return {**state, **updates}
 
     def _retrieve_node(self, state: AgentState) -> AgentState:
+        if state.get("force_safe_summary"):
+            updates = self.document_rag_agent.prepare(
+                state["request"],
+                state.get("tool_calls", []),
+                state.get("trace_steps", []),
+            )
+            chunks = updates.pop("chunks", [])
+            updates.pop("history", None)
+            return {
+                **state,
+                **updates,
+                "answer": clinical_summary_answer(chunks),
+                "evidence_chunks": chunks,
+                "generation_metadata": {
+                    "provider": "local",
+                    "attempt_count": 0,
+                    "retry_count": 0,
+                    "finish_reason": "safe_summary_repair",
+                    "fallback_selected": True,
+                    "fallback_kind": "safe_local_summary",
+                    "duration_ms": 0.0,
+                },
+                "trace_steps": [
+                    *updates.get("trace_steps", []),
+                    {
+                        "node": "generation",
+                        "answer_source": "safe_summary_repair",
+                        "fallback_selected": True,
+                        "fallback_kind": "safe_local_summary",
+                        "finish_reason": "safe_summary_repair",
+                        "duration_ms": 0.0,
+                    },
+                ],
+            }
         updates = self.document_rag_agent.run(
             state["request"],
             state.get("tool_calls", []),
@@ -745,6 +710,7 @@ class CareMindAgent:
         issues = []
         repair_route = ""
         no_relevant_document_evidence = bool(state.get("no_relevant_document_evidence"))
+        citation_validation: dict[str, Any] = {}
 
         if not state.get("answer"):
             issues.append("missing_answer")
@@ -752,7 +718,13 @@ class CareMindAgent:
         if state.get("require_citations", True) and not state.get("citations") and not no_relevant_document_evidence:
             issues.append("missing_citations")
             repair_route = repair_route or "clarify"
-        if self._asks_general_not_patient(request.message) and route == "retrieve":
+        decision = state.get("context_resolution", {}).get("routing_decision", {})
+        general_scope = (
+            decision.get("scope") == "general"
+            if decision
+            else self._asks_general_not_patient(state.get("original_message", request.message))
+        )
+        if general_scope and route in {"retrieve", "compare", "imaging"}:
             issues.append("general_question_routed_to_patient_documents")
             repair_route = "medical_education"
         if route == "retrieve" and no_relevant_document_evidence:
@@ -764,16 +736,63 @@ class CareMindAgent:
             issues.append("external_evidence_not_configured")
         if self._has_synthetic_result_mix(state.get("retrieved_chunks", [])):
             issues.append("possible_demo_document_mix")
+        if (
+            self.llm.settings.citation_validation_enabled is True
+            and state.get("require_citations", True)
+            and state.get("citations")
+            and state.get("answer")
+        ):
+            citation_validation = validate_answer_citations(
+                state["answer"],
+                state.get("citations", []),
+                state.get("evidence_chunks", []),
+            )
+            structural_enforced = (
+                self.llm.settings.citation_structural_enforcement is True and route == "retrieve"
+            )
+            if structural_enforced and citation_validation["invalid_citation_ids"]:
+                issues.append("invalid_citation_ids")
+                repair_route = route
+            if (
+                structural_enforced
+                and citation_validation["citation_coverage"] < self.llm.settings.citation_min_coverage
+            ):
+                issues.append("incomplete_citation_coverage")
+                repair_route = route
+            if self.llm.settings.citation_semantic_enforcement is True:
+                if citation_validation["unsupported_claim_indexes"]:
+                    issues.append("unsupported_citation_claims")
+                    repair_route = route
+                if citation_validation["contradicted_claim_indexes"]:
+                    issues.append("contradicted_citation_claims")
+                    repair_route = route
 
+        # Scope repair takes precedence over all citation repairs of the rejected draft.
+        if "general_question_routed_to_patient_documents" in issues:
+            repair_route = "medical_education"
+        if route == "retrieve" and looks_like_raw_evidence_dump(state.get("answer", "")):
+            issues.append("raw_evidence_dump")
+            repair_route = "retrieve"
+        if LLMClient._looks_like_reasoning_content(self.llm, state.get("answer", "")):
+            issues.append("internal_drafting_content")
+            repair_route = "clarify"
+        blocking_issues = {
+            "internal_drafting_content",
+            "raw_evidence_dump",
+            "missing_answer",
+            "missing_citations",
+            "general_question_routed_to_patient_documents",
+            "no_retrieved_document_chunks",
+            "invalid_citation_ids",
+            "incomplete_citation_coverage",
+            "unsupported_citation_claims",
+            "contradicted_citation_claims",
+        }
         validation = {
-            "passed": not any(issue in issues for issue in [
-                "missing_answer",
-                "missing_citations",
-                "general_question_routed_to_patient_documents",
-                "no_retrieved_document_chunks",
-            ]),
+            "passed": not any(issue in blocking_issues for issue in issues),
             "issues": issues,
             "repair_route": repair_route,
+            "citation_validation": citation_validation,
             "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
         }
         notes = list(state.get("safety_notes", []))
@@ -803,6 +822,12 @@ class CareMindAgent:
         validation = state.get("validation", {})
         repair_route = validation.get("repair_route") or "clarify"
         route = repair_route if repair_route in {"direct", "retrieve", "compare", "imaging", "medical_education", "clarify", "emergency_redirect"} else "clarify"
+        if route == "medical_education":
+            decision = state.get("context_resolution", {}).get("routing_decision", {})
+            request = request.model_copy(update={
+                "message": decision.get("resolved_query") if decision.get("scope") == "general" else state.get("original_message", request.message),
+                "attachment_ids": [], "modality": "text", "bypass_cache": True,
+            })
         plan = {
             **state.get("plan", {}),
             "route": route,
@@ -814,6 +839,7 @@ class CareMindAgent:
         }
         return {
             **state,
+            "request": request.model_copy(update={"bypass_cache": True}),
             "plan": plan,
             "route": route,
             "cache_key": self._cache_key(request, route, state.get("context_resolution", {})),
@@ -823,6 +849,9 @@ class CareMindAgent:
             "citations": [],
             "tool_calls": [],
             "retrieved_chunks": [],
+            "evidence_chunks": [],
+            "no_relevant_document_evidence": False,
+            "force_safe_summary": route == "retrieve" and "raw_evidence_dump" in validation.get("issues", []),
             "require_citations": route not in {"direct", "clarify", "emergency_redirect"},
             "repair_count": state.get("repair_count", 0) + 1,
             "trace_steps": [
@@ -837,6 +866,11 @@ class CareMindAgent:
         }
 
     def _finalize_node(self, state: AgentState) -> AgentState:
+        if not state.get("validation", {}).get("passed", True):
+            # The single repair attempt failed. Never persist/cache the rejected draft.
+            state = {**state, "answer": self.clarification_agent.answer(), "route": "clarify",
+                     "citations": [], "retrieved_chunks": [], "evidence_chunks": [],
+                     "require_citations": False}
         request = state["request"]
         answer = state["answer"]
         if "external_evidence_not_configured" in state.get("validation", {}).get("issues", []):
@@ -864,9 +898,10 @@ class CareMindAgent:
         )
         original_message = state.get("original_message", request.message)
         user_message_id = self.memory.append(request.session_id, request.workspace_id, "user", original_message)
-        if request.attachment_ids:
+        submitted_ids = [item.id for item in state.get("submitted_attachments", [])]
+        if submitted_ids:
             self.tools.store.bind_attachments_to_message(
-                attachment_ids=request.attachment_ids,
+                attachment_ids=submitted_ids,
                 message_id=user_message_id,
                 workspace_id=request.workspace_id,
                 conversation_id=request.session_id,
@@ -907,6 +942,7 @@ class CareMindAgent:
             "embedding_degraded": embedding_degraded,
             "embedding_degraded_reason": embedding_degraded_reason,
             "generation_model": self._generation_model_label(),
+            "generation": state.get("generation_metadata", {}),
             "langsmith_enabled": self.llm.settings.langsmith_enabled,
             "retrieved_chunks": state.get("retrieved_chunks", []),
             "original_message": original_message,
@@ -923,7 +959,7 @@ class CareMindAgent:
             "attachment_types": state.get("context_resolution", {}).get("current_attachment_types", []),
             "selected_attachment": state.get("context_resolution", {}).get("selected_attachment"),
             "selection_reason": state.get("context_resolution", {}).get("reason"),
-            "current_message_attachment": bool(request.attachment_ids),
+            "current_message_attachment": bool(state.get("submitted_attachments")),
             "reused_attachment": state.get("context_resolution", {}).get("reason") == "contextual_attachment_followup",
             "processing_route": state.get("plan", {}).get("intent", ""),
             "vision_attempted": any(step.get("vision_attempted") for step in state.get("trace_steps", [])),
@@ -1036,7 +1072,7 @@ class CareMindAgent:
 
     def _next_after_validation(self, state: AgentState) -> str:
         validation = state.get("validation", {})
-        if not validation.get("passed", True) and validation.get("repair_route") and state.get("repair_count", 0) < 1:
+        if not validation.get("passed", True) and state.get("repair_count", 0) < 1:
             return "repair"
         return "finalize"
 
@@ -1077,7 +1113,7 @@ class CareMindAgent:
         entity_fingerprint = self._entity_fingerprint(context_resolution.get("conversation_entities", {}))
         settings = self.tools.embeddings.settings
         components: list[Any] = [
-            "v7",
+            "v8-structured-routing",
             route,
             request.workspace_id,
             workspace_revision,
@@ -1258,6 +1294,9 @@ class CareMindAgent:
         }
 
     def _planned_route(self, message: str, observations: dict[str, Any] | None = None) -> Route:
+        decision = (observations or {}).get("context_resolution", {}).get("routing_decision")
+        if decision:
+            return decision["route"]
         lowered = message.lower()
         observations = observations or {}
         context_resolution = observations.get("context_resolution", {})
@@ -1322,8 +1361,9 @@ class CareMindAgent:
             "intent": intent,
             "current_intent": intent_rewrite.get("current_intent") or self._rewrite_query(message),
             "intent_rewrite": intent_rewrite,
-            "route_source": "intent_rewrite" if intent_rewrite.get("route_hint") == route else "supervisor",
+            "route_source": "structured_model" if observations.get("context_resolution", {}).get("routing_decision") else "supervisor",
             "route_confidence": intent_rewrite.get("confidence", 0.0),
+            "route_confidence_kind": "uncalibrated_model",
             "goal": self._goal_for_route(route, needs_external),
             "route": route,
             "needs_patient_docs": route in {"retrieve", "compare"},
@@ -1372,15 +1412,41 @@ class CareMindAgent:
         images: list[Any] | None = None,
         current_attachments: list[Any] | None = None,
     ) -> dict[str, Any]:
-        resolver = getattr(self, "conversation_resolver_agent", None) or ConversationResolverAgent()
-        return resolver.resolve(
-            message=message,
-            context=context,
-            history=history,
-            documents=documents or [],
-            images=images or [],
-            current_attachments=current_attachments or [],
-        )
+        attachments = current_attachments or []
+        payload = {
+            "latest_message": message,
+            "history": [{"role": item.role, "content": item.content[:2000]} for item in history[-8:]],
+            "context": {key: context.get(key) for key in (
+                "current_topic", "conversation_focus", "active_document_id", "active_document_name",
+                "active_image_id", "active_image_name", "active_patient",
+            )},
+            "available_documents": [{"id": item.document_id, "name": item.filename} for item in (documents or [])[:20]],
+            "available_images": [{"id": item.image_id, "name": item.filename} for item in (images or [])[:20]],
+            "current_message_attachments": [self._attachment_trace(item) for item in attachments],
+        }
+        decision = decide(self.llm, payload)
+        document_scope = decision.scope == "documents"
+        document_ids = [item.document_id for item in attachments if item.document_id] if document_scope else []
+        if document_scope and not document_ids:
+            document_ids = context.get("active_document_ids") or ([context["active_document_id"]] if context.get("active_document_id") else [])
+        return {
+            "original_query": message, "resolved_query": decision.resolved_query,
+            "rewritten_query": decision.resolved_query,
+            "routing_decision": decision.model_dump(),
+            "used_context": decision.resolved_query != message,
+            "is_followup": decision.resolved_query != message,
+            "reason": "structured_model_routing", "confidence": decision.confidence,
+            "current_message_attachment": bool(attachments),
+            "active_document_ids": document_ids,
+            "active_attachment_ids": [item.id for item in attachments] if document_scope else [],
+            "selected_attachment": attachments[0].id if attachments and document_scope else "",
+            "session_state": {}, "conversation_entities": {},
+            "intent_rewrite": {
+                "current_intent": decision.resolved_query, "resolved_query": decision.resolved_query,
+                "route_hint": decision.route, "confidence": decision.confidence,
+                "used_context": decision.resolved_query != message,
+            },
+        }
 
     def _current_message_attachments(self, request: ChatRequest) -> list[Any]:
         if not request.attachment_ids:
@@ -1388,11 +1454,13 @@ class CareMindAgent:
         require = getattr(self.tools.store, "require_message_attachments", None)
         if not callable(require):
             return []
-        return require(
+        attachments = require(
             attachment_ids=request.attachment_ids,
             workspace_id=request.workspace_id,
             conversation_id=request.session_id,
         )
+        # Already-bound IDs are conversation files, not new message attachments.
+        return [item for item in attachments if getattr(item, "message_id", None) is None]
 
     def _attachment_trace(self, attachment: Any) -> dict[str, Any]:
         return {
@@ -1438,14 +1506,14 @@ class CareMindAgent:
         citations = state.get("citations", [])
         retrieved_chunks = state.get("retrieved_chunks", [])
         now = datetime.now(timezone.utc).isoformat()
-        current_attachments = self._current_message_attachments(request)
+        current_attachments = state.get("submitted_attachments", [])
         voice_context = self._voice_context_update(request)
-        if state.get("route") == "medical_education" and not current_attachments:
+        if state.get("route") == "medical_education":
             return {
                 **previous,
                 **voice_context,
                 "conversation_focus": "general_medical_education",
-                "current_topic": request.message[:160],
+                "current_topic": state.get("context_resolution", {}).get("routing_decision", {}).get("topic") or request.message[:160],
                 "active_attachment_id": "",
                 "active_attachment_type": "",
                 "updated_at": now,
@@ -1470,7 +1538,7 @@ class CareMindAgent:
                 "active_attachment_name": first_attachment.filename,
                 "last_attachment_ids": [item.id for item in current_attachments],
                 "conversation_focus": "attachment",
-                "current_topic": first_attachment.filename,
+                "current_topic": state.get("context_resolution", {}).get("routing_decision", {}).get("topic") or first_attachment.filename,
                 "last_structured_evidence_id": first_attachment.document_id or "",
                 "last_evidence_need": state.get("evidence_need", ""),
                 "last_retrieval_result": retrieved_chunks[:5],

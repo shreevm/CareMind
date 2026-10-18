@@ -2,11 +2,171 @@
 
 CareMind is a LangGraph-powered multi-agent RAG assistant for medical and research documents. It supports PDF/text/image upload, first-class chat attachments, configurable Groq/OpenAI-compatible document vision, OCR fallback for scans/report photos, structured evidence retrieval, cited answers, report comparison, browser chat history, session memory, observability, evaluation, and Redis-backed response caching.
 
-The production architecture uses FastAPI, LangGraph, Supabase Postgres with pgvector, object storage, Redis, background ingestion workers, and explicit evidence records. SQLite remains the local development store for document metadata, indexed chunk records, structured extraction records, and chat history.
+The current application uses FastAPI, LangGraph, SQLite metadata storage, configurable vector storage (Supabase pgvector by default), local upload storage, and Redis-backed memory and caching. The proposed production architecture below adds user/workspace authorization, durable ingestion workers, private object storage, and Postgres metadata persistence; these additions are not yet implemented.
 
 CareMind is for medical education and document interpretation only. It is not a diagnosis, treatment plan, emergency triage system, or medication-dosing tool.
 
 ## 1. Architecture
+
+### Current application architecture
+
+This diagram shows the main implemented components. Provider calls depend on configuration. Upload processing currently runs within the upload request, and `Services` initializes `SQLiteStore` for metadata even when vectors use Supabase.
+
+```mermaid
+flowchart TD
+    UI["Next.js browser client"] --> API["FastAPI API<br/>Optional shared Basic Auth"]
+    API --> CHAT["CareMindAgent<br/>LangGraph orchestration"]
+    API --> UPLOAD["DocumentIngestionService"]
+    API --> VOICE["SpeechToTextService"]
+    VOICE --> STT["ElevenLabs transcription"]
+    CHAT --> RESOLVE["ConversationResolverAgent"]
+    RESOLVE --> ROUTE["SupervisorAgent"]
+    ROUTE --> SPECIALISTS["Document RAG / Education / Comparison<br/>Imaging / Direct / Clarification"]
+    SPECIALISTS --> TOOLS["DocumentTools and evidence retrieval"]
+    SPECIALISTS --> LLM["Configured language model<br/>or local fallback"]
+    TOOLS --> VECTOR[("Vector storage<br/>Supabase / SQLite / Pinecone")]
+    TOOLS --> SOURCES["MedlinePlus / PubMed<br/>when enabled"]
+    CHAT <--> MEMORY["ConversationMemory"]
+    MEMORY <--> REDIS[("Redis cache and session state")]
+    MEMORY <--> SQLITE[("SQLite metadata and history")]
+    UPLOAD --> FILES[("Local upload files")]
+    UPLOAD --> PARSE["DocumentUnderstandingAgent<br/>Text / document vision / OCR fallback"]
+    PARSE --> SQLITE
+    PARSE --> EMBED["EmbeddingClient"]
+    EMBED --> VECTOR
+    API --> METRICS["Metrics and logs"]
+    METRICS --> PROM["Prometheus → Grafana"]
+```
+
+### Proposed implementation order — not executed
+
+1. **Identity and ownership:** integrate Supabase sign-in, verify access tokens on the API, and check workspace membership on every document, image, attachment, session, search, comparison, and cache operation. Bind resources to authorized workspaces; restrict operational/debug endpoints to appropriate roles. Verify rejection of cross-user access, including cache hits.
+2. **Data hygiene:** move intentional synthetic fixtures into a dedicated test directory, stop tracking generated uploads/logs, and add secret scanning plus checks for accidental sensitive-data fixtures. Review logging and trace redaction. Preserve existing local data during cleanup.
+3. **Backend structure:** split API routers, graph assembly, context resolution, cache policy, response finalization, and persistence responsibilities into focused modules. Preserve API contracts and use existing regression tests to check behavior.
+4. **Frontend structure:** extract API/streaming helpers, session and voice hooks, and reusable chat, attachment, citation, and sidebar components. Audit the static frontend and extension dependencies before retiring duplicate UI code.
+5. **Production persistence and ingestion:** introduce a store interface, migrate metadata/history to Postgres with workspace ownership constraints, and store files in private object storage. Move ingestion to durable jobs with retries, idempotency, status reporting, and failed-job handling; return a job ID and let the UI follow progress. Keep SQLite/local files available for development.
+6. **Deployment hardening:** run the container as a non-root user, narrow image contents, build the intended frontend artifact, and add production configuration validation. Keep secrets and runtime files excluded from builds; audit existing exclusions before changing them. Gate deployment on checks and deploy the tested image digest with a rollback path.
+7. **Quality gates and dependencies:** add formatting/lint checks, frontend behavior tests, coverage reporting, migration checks, and dependency/secret scanning. Separate runtime and development dependencies, document supported version ranges, and retain frozen lockfile installs. Add evaluation regression gates with explicit provider costs and thresholds.
+
+### Proposed production architecture
+
+This is the implementation target, not a claim about the current runtime. Supabase service credentials must stay on the server; database policies complement explicit API authorization. Provider calls should receive only the content needed for the requested operation.
+
+```mermaid
+flowchart TD
+    CLIENT["Next.js client"] --> AUTH["Supabase Auth"]
+    AUTH --> TOKEN["User access token"]
+    TOKEN --> API["FastAPI<br/>Verify token and workspace membership"]
+    CLIENT -->|"Authorized requests"| API
+    API --> OWN["Resource ownership checks<br/>Sessions / documents / images / attachments"]
+    OWN --> AGENT["LangGraph orchestrator<br/>Guardrails → context → route → specialist"]
+    AGENT --> EVIDENCE["Evidence retrieval and answer validation"]
+    EVIDENCE --> DB[("Postgres metadata, history and pgvector<br/>Workspace constraints and access policies")]
+    EVIDENCE --> PROVIDERS["Configured LLM and literature providers"]
+    AGENT <--> CACHE[("Redis<br/>Authorized workspace/context cache keys")]
+    OWN --> INGEST["Upload API<br/>Validate file and create ingestion job"]
+    INGEST --> STORAGE[("Private object storage")]
+    INGEST --> JOBS[("Durable ingestion jobs")]
+    JOBS --> WORKER["Ingestion workers<br/>Parse → evidence → embed → index"]
+    STORAGE --> WORKER
+    WORKER --> VISION["Document vision / OCR providers"]
+    WORKER --> DB
+    WORKER -->|"Update status and invalidate cache"| CACHE
+    API --> OBS["Redacted logs, metrics and audit events"]
+    WORKER --> OBS
+    OBS --> DASH["Prometheus / Grafana"]
+```
+
+### Proposed chat call flow
+
+Authorization happens before reading session context, serving cached answers, or retrieving evidence. Voice input first calls `/speech/transcribe`, then submits the returned transcript as a chat request. The diagram describes the logical response lifecycle; streaming must apply output controls before releasing answer text to the client.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as Next.js
+    participant API as FastAPI
+    participant Auth as Identity and ownership
+    participant Agent as CareMindAgent
+    participant Memory as Session store and cache
+    participant Specialist as Selected specialist
+    participant Evidence as Evidence sources
+    participant Model as Configured LLM
+    User->>UI: Send question and optional attachment IDs
+    UI->>API: POST /chat or /chat/stream with access token
+    API->>Auth: Verify token, workspace and resource access
+    alt Invalid identity or unauthorized resource
+        Auth-->>API: Deny
+        API-->>UI: Authentication/access error
+    else Authorized
+        API->>Agent: Authorized request
+        Agent->>Agent: Input safety and clarification checks
+        alt Safety redirect or insufficient input
+            Agent-->>API: Safe response or clarification
+        else Continue
+            Agent->>Memory: Load authorized session context
+            Agent->>Agent: Resolve follow-up and choose route
+            Agent->>Memory: Check eligible context/version-scoped cache
+            alt Valid cache hit
+                Memory-->>Agent: Cached response
+            else Cache miss or bypass
+                Agent->>Specialist: Dispatch resolved request
+                opt Route requires evidence
+                    Specialist->>Evidence: Retrieve within authorized scope
+                    Evidence-->>Specialist: Evidence and citations
+                end
+                opt Route requires model generation
+                    Specialist->>Model: Question and permitted context
+                    Model-->>Specialist: Candidate answer
+                end
+                Specialist-->>Agent: Answer or explicit limitation
+                Agent->>Agent: Check grounding, citations and output safety
+                Agent->>Memory: Cache eligible validated response
+            end
+            Agent->>Memory: Persist turn and updated context
+            Agent-->>API: Finalized response
+        end
+        API-->>UI: JSON or controlled stream with final metadata
+    end
+    UI-->>User: Answer, clarification or error
+```
+
+### Proposed upload call flow
+
+The asynchronous job API and worker below are planned. Today `/upload` awaits ingestion before returning the asset and attachment metadata.
+
+```mermaid
+sequenceDiagram
+    participant UI as Next.js
+    participant API as Upload API
+    participant Store as Private object storage
+    participant Jobs as Durable job store
+    participant Worker as Ingestion worker
+    participant Parser as Document understanding
+    participant DB as Postgres and pgvector
+    participant Cache as Redis
+    UI->>API: File, session and access token
+    API->>API: Authorize workspace/session and validate upload
+    API->>Store: Save private source file
+    API->>Jobs: Persist job and attachment processing state
+    API-->>UI: Accepted with job and attachment IDs
+    Worker->>Jobs: Claim job with retry/lease protection
+    Worker->>Store: Read source file
+    Worker->>Parser: Extract text or use document vision/OCR
+    Parser-->>Worker: Structured content and confidence
+    Worker->>DB: Persist evidence and indexed embeddings idempotently
+    alt Processing succeeds
+        Worker->>Cache: Invalidate workspace responses
+        Worker->>Jobs: Mark ready and link evidence to attachment
+    else Processing fails
+        Worker->>Jobs: Retry or mark failed with safe error details
+    end
+    UI->>API: Read authorized job status
+    API->>Jobs: Load job status
+    API-->>UI: Processing, ready or failed
+```
+
+### Existing request paths in detail
 
 Runtime request path:
 
@@ -63,7 +223,7 @@ Upload PDF/text/image
   -> DocumentUnderstandingAgent once per uploaded document version
        - configured Groq/OpenAI-compatible vision model when CAREMIND_DOCUMENT_VLM_BASE_URL is set
        - outputs structured JSON, patient entities, labs, diagnoses, medications, measurements, type, summary, confidence
-       - OCR is fallback/support for report photos and scans when the VLM/text parser cannot confidently parse
+       - OCR reads report photos and image-only PDF pages when selectable text is absent
   -> store raw structured JSON in document_understanding / extraction_runs
   -> normalize into evidence_items
   -> chunk and embed structured evidence, not repeated VLM calls
@@ -86,9 +246,9 @@ Document pipeline
 
 Radiology pipeline
   -> ImagingAgent
-  -> MedGemma-style medical vision model only when configured
+  -> configured MedGemma endpoint, or the configured general vision model for a 2D image
   -> linked report/evidence fallback or explicit limitation
-  -> cited imaging answer
+  -> experimental image description; cite only linked report evidence when present
 ```
 
 Evaluation path:
@@ -116,7 +276,7 @@ backend/ragas_questions.jsonl
 - `EvidenceManager`: normalizes structured JSON, chunks, citations, and retrieval candidates into auditable evidence.
 - `DocumentRAGAgent`: answers uploaded-document questions from stored evidence and citations.
 - `MedicalEducationAgent`: answers general medical education questions from trusted education evidence, MedlinePlus health-topic enrichment, optional sanitized PubMed enrichment, and controlled model educational context when evidence is thin.
-- `ImagingAgent`: answers image-scoped questions from linked report/caption/evidence today and owns future CXR/CT/MRI medical-vision integration.
+- `ImagingAgent`: answers from linked report/caption evidence and optionally sends the current attached 2D image to a configured MedGemma endpoint.
 - `ConversationResolverAgent`: resolves current-message attachments, active patient/report/image context, and follow-ups before routing and cache lookup.
 - `SupervisorAgent`: state-aware route classifier with hard safety checks before cache or generation.
 - `SafetyLayer`: emergency redirect, prompt-injection refusal, unsupported-answer handling, and disclaimer finalization.
@@ -125,6 +285,10 @@ backend/ragas_questions.jsonl
 - `Supabase Postgres + pgvector`: production durable metadata, evidence, and vector backend.
 
 ## 3. Run Locally
+
+To experiment with chest X-ray analysis without a local GPU, use the [MedGemma Colab notebook and setup guide](notebooks/README.md). This is a separate research notebook; it does not enable live radiology inference in the app.
+
+For live app inference, the currently configured document vision endpoint can describe the pixels of an attached PNG/JPEG/WebP image when the user asks an imaging question. To use MedGemma instead, expose it through a stable OpenAI-compatible `/v1/chat/completions` service and set `CAREMIND_RADIOLOGY_VISION_BASE_URL`, `CAREMIND_RADIOLOGY_VISION_MODEL`, and, when required, `CAREMIND_RADIOLOGY_VISION_API_KEY`. The MedGemma endpoint takes priority. Image descriptions are experimental, and report citations apply only to any linked report text. The current path does not accept DICOM files or CT/MRI volumes. PDFs are parsed as text, with OCR of embedded images on pages with no extractable text; full PDF page rendering is not included.
 
 ```bash
 uv sync
@@ -195,9 +359,11 @@ CAREMIND_DOCUMENT_VLM_API_KEY=
 CAREMIND_DOCUMENT_VLM_MIN_CONFIDENCE=0.55
 CAREMIND_DOCUMENT_VLM_TIMEOUT_SECONDS=60
 
-# Future radiology vision
+# Optional experimental radiology vision
 CAREMIND_RADIOLOGY_VISION_BASE_URL=
-CAREMIND_RADIOLOGY_VISION_MODEL=google/medgemma-4b-it
+CAREMIND_RADIOLOGY_VISION_MODEL=google/medgemma-1.5-4b-it
+CAREMIND_RADIOLOGY_VISION_API_KEY=
+CAREMIND_RADIOLOGY_VISION_TIMEOUT_SECONDS=90
 
 # Speech-to-text
 ELEVENLABS_API_KEY=
@@ -334,7 +500,7 @@ The backend uses a controlled supervisor-specialist pattern. `CareMindAgent` own
 - `DirectResponseAgent`: answers product/help questions such as `what do you do?`.
 - `DocumentRAGAgent`: runs uploaded-document RAG with citations. For report-guidance questions such as "what should the patient do?", it first scans the active document chunks for explicit recommendations, follow-up plans, instructions, advice, conclusions, impressions, or treatment guidance. If none are found, it may add a separate cited "General next steps" section from trusted education evidence only.
 - `MedicalEducationAgent`: runs general medical education RAG over trusted built-in corpus and optional external literature.
-- `ImagingAgent`: runs image/report-grounded answers today and future MedGemma-style radiology interpretation behind a separate model interface.
+- `ImagingAgent`: uses image/report grounding and can call a separately configured MedGemma OpenAI-compatible endpoint for an attached 2D image. If that call fails, it falls back to paired report text.
 - `ReportComparisonAgent`: compares two indexed reports.
 - `ClarificationAgent`: asks for more context when the request is too vague or evidence targets are ambiguous.
 
@@ -512,7 +678,7 @@ docker compose up --build
 
 Prometheus scrapes `api:8000/metrics` every 15 seconds using `ops/prometheus/prometheus.yml`. Grafana provisions the Prometheus datasource and a `CareMind Overview` dashboard from `ops/grafana/`.
 
-Grafana Cloud remote write is optional. Keep real cloud credentials in GitHub/server secrets, not in `ops/prometheus/prometheus.yml`; use `ops/prometheus/prometheus.cloud.yml.example` as a template if you enable remote write.
+For Grafana Cloud, follow [the cloud monitoring setup](docs/grafana-cloud.md). The standalone Alloy collector sends metrics from your local or deployed API to Grafana Cloud without running a local Grafana server. Keep real credentials in the ignored `.env.grafana` file.
 
 Key exported metrics include:
 

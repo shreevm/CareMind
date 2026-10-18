@@ -8,7 +8,7 @@ from .education import MedicalEducationStore
 from .embeddings import EmbeddingClient
 from .external_literature import ExternalLiteratureSearch
 from .observability import chunk_outputs, trace_block, trace_text
-from .schemas import Citation, CompareResponse, RetrievedChunk
+from .schemas import Citation, CompareResponse, ImageMetadata, RetrievedChunk
 from .store import SQLiteStore
 from .vectorstore import VectorStore
 from .vectorstore import cosine_similarity
@@ -424,6 +424,30 @@ class DocumentTools:
                 if document is not None and document.workspace_id == workspace_id:
                     document_ids.append(document_id)
         return document_ids
+
+    def attachment_image_assets(
+        self,
+        attachment_ids: list[str],
+        *,
+        workspace_id: str,
+        conversation_id: str,
+    ) -> list[ImageMetadata]:
+        attachments = self.store.require_message_attachments(
+            attachment_ids=attachment_ids,
+            workspace_id=workspace_id,
+            conversation_id=conversation_id,
+        )
+        images: list[ImageMetadata] = []
+        seen: set[str] = set()
+        for attachment in attachments:
+            if not attachment.image_asset_id or attachment.image_asset_id in seen:
+                continue
+            image = self.store.get_image_asset(attachment.image_asset_id)
+            if image is None or image.workspace_id != workspace_id:
+                continue
+            seen.add(image.image_id)
+            images.append(image)
+        return images
 
     def compare_reports(self, document_ids: list[str], workspace_id: str = "default") -> CompareResponse:
         settings = self.embeddings.settings

@@ -1,0 +1,26 @@
+# Standalone collector for a backend running on the host or a public HTTPS URL.
+# Start with: docker compose --env-file .env.grafana -f compose.grafana-cloud.yml up -d
+services:
+  alloy:
+    image: grafana/alloy@sha256:f111cce835516c5f99166342be7038496b52ced16667be5a11e19258a3e4cd30
+    restart: unless-stopped
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    environment:
+      GRAFANA_CLOUD_PROM_URL: ${GRAFANA_CLOUD_PROM_URL:?Set the Grafana Cloud remote write URL}
+      GRAFANA_CLOUD_PROM_USER: ${GRAFANA_CLOUD_PROM_USER:?Set the Grafana Cloud metrics username}
+      GRAFANA_CLOUD_PROM_TOKEN: ${GRAFANA_CLOUD_PROM_TOKEN:?Set a token with metrics:write permission}
+      CAREMIND_METRICS_TARGET: ${CAREMIND_METRICS_TARGET:-host.docker.internal:8002}
+      CAREMIND_METRICS_SCHEME: ${CAREMIND_METRICS_SCHEME:-http}
+      CAREMIND_METRICS_USERNAME: ${CAREMIND_METRICS_USERNAME:-}
+      CAREMIND_METRICS_PASSWORD: ${CAREMIND_METRICS_PASSWORD:-}
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - ./ops/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy-data:/var/lib/alloy/data
+
+volumes:
+  alloy-data:

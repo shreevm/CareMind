@@ -33,7 +33,6 @@ class SQLiteStore:
             conn.close()
 
     def _init_db(self) -> None:
-        print(f"[DB] Initializing SQLite database at {self.db_path}")
         logger.info("database.init.start path=%s", self.db_path)
         with self.connect() as conn:
             conn.executescript(
@@ -226,7 +225,6 @@ class SQLiteStore:
             self._ensure_column(conn, "voice_transcripts", "timestamps_json", "text")
             self._ensure_column(conn, "voice_transcripts", "modality", "text")
             self._ensure_column(conn, "voice_transcripts", "input_modality", "text")
-        print("[DB] Database tables created successfully: documents, image_assets, chunks, messages, message_attachments, workspace_revisions, conversation_context, document_understanding")
         logger.info("database.init.done tables_created=7")
 
     def save_image_asset(
@@ -241,7 +239,6 @@ class SQLiteStore:
         report_text_summary: str | None = None,
         ocr_document_id: str | None = None,
     ) -> None:
-        print(f"[DATA] Saving image asset - ID: {image_id}, Filename: {filename}, Workspace: {workspace_id}, Modality: {modality}")
         logger.info("store.save_image_asset.start image_id=%s workspace_id=%s filename=%s modality=%s", image_id, workspace_id, filename, modality)
         with self.connect() as conn:
             conn.execute(
@@ -269,7 +266,6 @@ class SQLiteStore:
                 ),
             )
             self._bump_workspace_revision(conn, workspace_id)
-        print(f"[DATA] Image asset saved successfully")
         logger.info("store.save_image_asset.done image_id=%s status=ok", image_id)
 
     def list_images(self, workspace_id: str = "default") -> list[ImageMetadata]:
@@ -293,7 +289,6 @@ class SQLiteStore:
             )
             for row in rows
         ]
-        print(f"[DATA] Retrieved {len(images)} images from workspace {workspace_id}")
         logger.info("store.list_images.done workspace_id=%s count=%s", workspace_id, len(images))
         return images
 
@@ -333,7 +328,6 @@ class SQLiteStore:
         document_type: str | None = None,
         understanding_confidence: float | None = None,
     ) -> None:
-        print(f"[DATA] Saving document - ID: {document_id}, Filename: {filename}, Type: {content_type}, Workspace: {workspace_id}")
         logger.info("store.save_document.start document_id=%s workspace_id=%s filename=%s content_type=%s", document_id, workspace_id, filename, content_type)
         with self.connect() as conn:
             conn.execute(
@@ -359,7 +353,6 @@ class SQLiteStore:
                 ),
             )
             self._bump_workspace_revision(conn, workspace_id)
-        print(f"[DATA] Document saved successfully")
         logger.info("store.save_document.done document_id=%s status=ok", document_id)
 
     def save_document_understanding(
@@ -472,7 +465,6 @@ class SQLiteStore:
         embedding_dimension: int | None = None,
         embedding_index_version: str = "",
     ) -> None:
-        print(f"[DATA] Storing chunks - Document: {chunks[0].document_id if chunks else 'N/A'}, Count: {len(chunks)}, Provider: {embedding_provider}, Model: {embedding_model}, Index: {embedding_index_version}")
         logger.info("store.replace_chunks.start document_id=%s chunk_count=%s embedding_provider=%s embedding_model=%s embedding_index_version=%s", chunks[0].document_id if chunks else "N/A", len(chunks), embedding_provider, embedding_model, embedding_index_version)
         with self.connect() as conn:
             if chunks:
@@ -544,11 +536,9 @@ class SQLiteStore:
                     (len(chunks), chunks[0].document_id),
                 )
                 self._bump_workspace_revision(conn, workspace_id)
-        print(f"[DATA] Chunks stored successfully - {len(chunks)} chunks with dimension {stored_dimension}")
         logger.info("store.replace_chunks.done chunk_count=%s dimension=%s status=ok", len(chunks), stored_dimension)
 
     def delete_document(self, document_id: str) -> dict[str, str] | None:
-        print(f"[DATA] Deleting document - ID: {document_id}")
         logger.info("store.delete_document.start document_id=%s", document_id)
         with self.connect() as conn:
             row = conn.execute("select workspace_id, file_path from documents where document_id = ?", (document_id,)).fetchone()
@@ -559,21 +549,18 @@ class SQLiteStore:
             conn.execute("update image_assets set ocr_document_id = null where ocr_document_id = ?", (document_id,))
             if row is not None:
                 self._bump_workspace_revision(conn, row["workspace_id"])
-        print(f"[DATA] Document deleted successfully")
         logger.info("store.delete_document.done document_id=%s status=ok", document_id)
         if row is None:
             return None
         return {"workspace_id": row["workspace_id"], "file_path": row["file_path"]}
 
     def delete_image_asset(self, image_id: str) -> dict[str, str] | None:
-        print(f"[DATA] Deleting image asset - ID: {image_id}")
         logger.info("store.delete_image_asset.start image_id=%s", image_id)
         with self.connect() as conn:
             row = conn.execute("select workspace_id, file_path, ocr_document_id from image_assets where image_id = ?", (image_id,)).fetchone()
             conn.execute("delete from image_assets where image_id = ?", (image_id,))
             if row is not None:
                 self._bump_workspace_revision(conn, row["workspace_id"])
-        print(f"[DATA] Image asset deleted successfully")
         logger.info("store.delete_image_asset.done image_id=%s status=ok", image_id)
         if row is None:
             return None
@@ -602,7 +589,6 @@ class SQLiteStore:
             )
             for row in rows
         ]
-        print(f"[DATA] Retrieved {len(documents)} documents from workspace {workspace_id}")
         logger.info("store.list_documents.done workspace_id=%s count=%s", workspace_id, len(documents))
         return documents
 
@@ -611,7 +597,6 @@ class SQLiteStore:
         with self.connect() as conn:
             row = conn.execute("select * from documents where document_id = ?", (document_id,)).fetchone()
         if row is None:
-            print(f"[DATA] Document not found - ID: {document_id}")
             logger.info("store.get_document.done document_id=%s status=not_found", document_id)
             return None
         doc = DocumentMetadata(
@@ -627,7 +612,6 @@ class SQLiteStore:
             document_type=row["document_type"],
             understanding_confidence=row["understanding_confidence"],
         )
-        print(f"[DATA] Retrieved document - ID: {document_id}, Chunks: {doc.chunk_count}")
         logger.info("store.get_document.done document_id=%s chunk_count=%s status=ok", document_id, doc.chunk_count)
         return doc
 
@@ -872,7 +856,6 @@ class SQLiteStore:
             )
 
     def append_message(self, session_id: str, workspace_id: str, role: str, content: str) -> int:
-        print(f"[CHAT] Appending message - Session: {session_id}, Role: {role}, Length: {len(content)} chars")
         logger.info("store.append_message.start session_id=%s workspace_id=%s role=%s content_length=%s", session_id, workspace_id, role, len(content))
         with self.connect() as conn:
             cursor = conn.execute(
@@ -1106,7 +1089,6 @@ class SQLiteStore:
             )
             for row in reversed(rows)
         ]
-        print(f"[CHAT] Loaded {len(messages)} messages for session {session_id}")
         logger.info("store.load_messages.done session_id=%s message_count=%s", session_id, len(messages))
         return messages
 

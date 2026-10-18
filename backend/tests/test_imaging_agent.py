@@ -10,10 +10,32 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from backend.caremind.agents.imaging import ImagingAgent, NO_IMAGE_EVIDENCE_ANSWER
 from backend.caremind.config import Settings
 from backend.caremind.ingestion import DocumentIngestionService
-from backend.caremind.ocr import OCRResult
+from backend.caremind.ocr import ClinicalTextStructurer, OCRResult
 from backend.caremind.schemas import ChatRequest, RetrievedChunk
 from backend.caremind.store import SQLiteStore
 from backend.caremind.vectorstore import VectorStore
+
+
+def test_structured_ocr_index_text_is_plain_and_does_not_repeat_raw_text() -> None:
+    structurer = ClinicalTextStructurer(Mock())
+    text = structurer.to_index_text(
+        {
+            "source_filename": "synthetic.png",
+            "modality": "lab_report",
+            "document_type": "laboratory",
+            "patient": {"name": "Rowan Example", "doctor": "Dr. Rivera"},
+            "measurements": [{"name": "ferritin", "value": "??", "unit": "ng/mL"}],
+            "findings": ["Hemoglobin is below the stated reference range"],
+            "impression": "Iron studies are incomplete",
+            "raw_text": "Hemoglobin repeated raw OCR fragment",
+        }
+    )
+
+    assert "{" not in text and "}" not in text
+    assert '"name"' not in text
+    assert "Measurement: name: ferritin; value: ??; unit: ng/mL." in text
+    assert "Raw OCR text" not in text
+    assert "repeated raw OCR fragment" not in text
 
 
 def test_imaging_agent_answers_from_paired_report_with_citation() -> None:
@@ -60,6 +82,98 @@ def test_imaging_tool_path_without_paired_report_asks_for_grounding() -> None:
     assert result["citations"] == []
     assert result["require_citations"] is False
     assert result["no_relevant_document_evidence"] is True
+
+
+def test_imaging_agent_calls_configured_medgemma_for_current_attachment(tmp_path: Path) -> None:
+    image_path = tmp_path / "xray.png"
+    image_path.write_bytes(b"synthetic-image-bytes")
+    image = SimpleNamespace(file_path=str(image_path), content_type="image/png")
+    chunk = RetrievedChunk(
+        chunk_id="image:image-1",
+        document_id="image-1",
+        document_name="xray.png",
+        text="Paired report or caption for grounding: no focal opacity.",
+        score=1.0,
+    )
+    tools = Mock()
+    tools.attachment_evidence_chunks.return_value = [chunk]
+    tools.attachment_image_assets.return_value = [image]
+    llm = Mock()
+    llm.settings = SimpleNamespace(
+        radiology_vision_base_url="https://example.test/v1",
+        radiology_vision_model="google/medgemma-1.5-4b-it",
+    )
+    llm.analyze_radiology_image.return_value = (
+        "Image quality: adequate.\nObservations: no focal opacity.\nLimitations: single image."
+    )
+    agent = ImagingAgent(tools, llm)
+
+    result = agent.run(
+        ChatRequest(
+            message="What does this X-ray show?",
+            session_id="conversation-1",
+            attachment_ids=["attachment-1"],
+            modality="image",
+        ),
+        [],
+        [],
+    )
+
+    assert result["answer"].startswith("Experimental image analysis by google/medgemma-1.5-4b-it")
+    assert result["citations"][0].document_id == "image-1"
+    assert result["tool_calls"] == ["radiology_vision"]
+    assert result["trace_steps"][-1]["vision_attempted"] is True
+    llm.analyze_radiology_image.assert_called_once()
+
+
+def test_imaging_agent_uses_configured_document_vision_for_image_pixels(tmp_path: Path) -> None:
+    image_path = tmp_path / "scan.png"
+    image_path.write_bytes(b"synthetic-image-bytes")
+    tools = Mock()
+    tools.attachment_evidence_chunks.return_value = []
+    tools.imaging_search.return_value = []
+    tools.attachment_image_assets.return_value = [
+        SimpleNamespace(file_path=str(image_path), content_type="image/png")
+    ]
+    llm = Mock()
+    llm.settings = SimpleNamespace(
+        radiology_vision_base_url=None,
+        document_vlm_base_url="https://example.test/v1",
+        document_vlm_model="vision-model",
+    )
+    llm.analyze_clinical_image.return_value = "Visible structures are described with uncertainty."
+    result = ImagingAgent(tools, llm).run(
+        ChatRequest(message="Describe this scan", attachment_ids=["attachment-1"], modality="image"),
+        [],
+        [],
+    )
+    assert "Visible structures" in result["answer"]
+    assert result["tool_calls"] == ["document_vision"]
+    assert result["trace_steps"][-1]["vision_provider"] == "openai_compatible_document_vlm"
+    llm.analyze_clinical_image.assert_called_once()
+
+
+def test_image_only_pdf_uses_embedded_image_ocr(tmp_path: Path) -> None:
+    from PIL import Image
+
+    pdf_path = tmp_path / "scan.pdf"
+    Image.new("RGB", (64, 64), "white").save(pdf_path, format="PDF")
+    settings = Settings(CAREMIND_IMAGE_OCR_ENABLED=True)
+    ingestion = DocumentIngestionService(
+        upload_dir=tmp_path,
+        store=Mock(),
+        embeddings=SimpleNamespace(settings=settings),
+        vectorstore=Mock(),
+        max_upload_bytes=20 * 1024 * 1024,
+        allowed_content_types={"application/pdf"},
+        ocr=StubOCR(),
+    )
+
+    extracted = ingestion.extract_text(pdf_path)
+
+    assert "[Page 1]" in extracted
+    assert "Hemoglobin 11.2 g/dL" in extracted
+    assert not list(tmp_path.glob(".pdf-ocr-*.png"))
 
 
 def test_document_tools_imaging_search_uses_uploaded_image_summary() -> None:

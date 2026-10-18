@@ -115,13 +115,10 @@ class DocumentIngestionService:
                 status_code=413,
             )
         logger.info("upload.write_file.done document_id=%s bytes=%s", document_id, bytes_written)
-        print(f"[INGEST] ✓ File written: {bytes_written} bytes")
 
         logger.info("upload.extract.start document_id=%s", document_id)
-        print(f"[INGEST] Extracting text...")
         extracted = self.extract_text(file_path)
         logger.info("upload.extract.done document_id=%s chars=%s", document_id, len(extracted))
-        print(f"[INGEST] ✓ Text extracted: {len(extracted)} characters")
         
         understanding: DocumentUnderstandingResult | None = None
         indexed_text = extracted
@@ -146,7 +143,6 @@ class DocumentIngestionService:
             metadata=chunk_metadata,
         )
         logger.info("upload.chunk.done document_id=%s chunks=%s", document_id, len(chunks))
-        print(f"[INGEST] ✓ Created {len(chunks)} chunks")
         
         summary = understanding.summary if understanding is not None else self._summarize(extracted)
         logger.info("upload.sqlite.document.start document_id=%s", document_id)
@@ -161,10 +157,8 @@ class DocumentIngestionService:
             understanding_confidence=understanding.confidence if understanding is not None else None,
         )
         logger.info("upload.sqlite.document.done document_id=%s", document_id)
-        print(f"[INGEST] ✓ Document metadata saved to database")
         
         logger.info("upload.embedding.start document_id=%s chunks=%s", document_id, len(chunks))
-        print(f"[INGEST] Computing embeddings for {len(chunks)} chunks...")
         vectors = self.embeddings.embed_texts([chunk.text for chunk in chunks])
         dimension = len(vectors[0]) if vectors else 0
         logger.info(
@@ -175,11 +169,9 @@ class DocumentIngestionService:
             self.embeddings.last_provider,
             self.embeddings.last_model,
         )
-        print(f"[INGEST] ✓ Embeddings computed - Provider: {self.embeddings.last_provider}, Model: {self.embeddings.last_model}, Dimension: {dimension}")
         
         try:
             logger.info("upload.vectorstore.upsert.start document_id=%s backend=%s", document_id, self.vectorstore.settings.vector_backend)
-            print(f"[INGEST] Storing vectors in {self.vectorstore.settings.vector_backend} backend...")
             self.vectorstore.upsert(
                 chunks,
                 vectors,
@@ -191,7 +183,6 @@ class DocumentIngestionService:
             if understanding is not None:
                 self._store_document_understanding(understanding)
             logger.info("upload.vectorstore.upsert.done document_id=%s", document_id)
-            print(f"[INGEST] ✓ Vectors stored in vectorstore")
         except Exception as exc:
             logger.exception(
                 "upload.vectorstore.upsert.failed document_id=%s error=%s",
@@ -207,7 +198,6 @@ class DocumentIngestionService:
         if document is None:
             raise RuntimeError("Document was not saved")
         logger.info("upload.done document_id=%s chunk_count=%s", document_id, document.chunk_count)
-        print(f"[INGEST] ✓ Upload complete - Document ID: {document_id}, Chunks: {document.chunk_count}\n")
         return document
 
     async def ingest_image_upload(
@@ -463,17 +453,45 @@ class DocumentIngestionService:
                 logger.info("extract.pdf.pages path=%s pages=%s", path, len(reader.pages))
                 pages = []
                 for index, page in enumerate(reader.pages, start=1):
-                    text = page.extract_text() or ""
-                    pages.append(f"[Page {index}]\n{text}")
+                    text = (page.extract_text() or "").strip()
+                    if not text and self.embeddings.settings.image_ocr_enabled:
+                        text = self._ocr_pdf_page_images(page)
+                    if text:
+                        pages.append(f"[Page {index}]\n{text}")
                 extracted = "\n\n".join(pages).strip()
                 if not extracted:
-                    raise TextExtractionError("PDF contains no extractable text.")
+                    raise TextExtractionError("PDF has no readable text or supported embedded page images.")
                 return extracted
             except TextExtractionError:
                 raise
             except Exception as exc:
                 raise TextExtractionError(f"Unable to extract PDF text: {exc}") from exc
         return path.read_text(encoding="utf-8", errors="ignore")
+
+    def _ocr_pdf_page_images(self, page) -> str:
+        """Read image-only PDF pages without adding a PDF renderer dependency."""
+        from io import BytesIO
+        from PIL import Image
+
+        parts = []
+        try:
+            page_images = list(page.images)
+        except Exception as exc:
+            logger.warning("extract.pdf.images_unavailable error=%s", exc.__class__.__name__)
+            return ""
+        for embedded in page_images[:8]:
+            temporary_image = self.upload_dir / f".pdf-ocr-{uuid.uuid4()}.png"
+            try:
+                with Image.open(BytesIO(embedded.data)) as image:
+                    image.convert("RGB").save(temporary_image, format="PNG")
+                result = self.ocr.extract(temporary_image)
+                if result.text.strip():
+                    parts.append(result.text.strip())
+            except Exception as exc:
+                logger.warning("extract.pdf.image_ocr_failed error=%s", exc.__class__.__name__)
+            finally:
+                temporary_image.unlink(missing_ok=True)
+        return "\n".join(parts)
 
     def chunk_text(
         self,

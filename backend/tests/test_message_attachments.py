@@ -113,12 +113,18 @@ def test_different_question_switches_to_medical_knowledge(tmp_path: Path) -> Non
     agent.tools.store.workspace_revision.return_value = "1"
     agent.tools.external_literature_available.return_value = False
     agent.supervisor_agent = Mock()
+    agent.llm = Mock()
+    agent.llm.route_conversation.return_value = {
+        "route": "medical_education", "scope": "general",
+        "resolved_query": "What causes anemia?", "topic": "anemia",
+        "confidence": 0.95, "clarification": "",
+    }
 
     state = agent._observe_node({"request": ChatRequest(message="Different question: what causes anemia?", session_id="s1", workspace_id="w1")})
     route = agent._planned_route(state["request"].message, state["observations"])
 
     assert route == "medical_education"
-    assert state["context_resolution"]["reason"] in {"explicit_general_topic", "standalone_general_education_query"}
+    assert state["context_resolution"]["reason"] == "structured_model_routing"
 
 
 def test_compare_these_uses_exact_two_current_attachments() -> None:
@@ -208,7 +214,7 @@ def test_medgemma_unavailable_does_not_fake_radiology_interpretation() -> None:
     )
 
     assert result["answer"] == NO_IMAGE_EVIDENCE_ANSWER
-    assert result["trace_steps"][-1]["fallback_reason"] == "medgemma_not_configured"
+    assert result["trace_steps"][-1]["fallback_reason"] == "image_vision_not_configured"
 
 
 def test_expired_temporary_attachment_deletes_metadata_and_binary(tmp_path: Path) -> None:

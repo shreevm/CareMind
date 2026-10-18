@@ -132,10 +132,6 @@ class VectorStore:
                      logger.exception("vectorstore.pinecone.upsert.failed index=%s", self.settings.pinecone_index_name)
                      import traceback
                      traceback.print_exc()
-                     print(type(exc))
-                     print(exc)
-                     print("=" * 80)
-                     print("SUPABASE UPSERT ERROR")
                     #  print(type(exc).__name__)
                     #  print(str(exc))
                     #  print("=" * 80)
@@ -445,27 +441,11 @@ class VectorStore:
             return
         self.ensure_supabase_ready()
         table = self._supabase_table_identifier()
-        print("=" * 80)
-        print("Runtime Configuration")
-        print("Backend:", self.settings.vector_backend)
-        print("Embedding Dimension:", self.settings.embedding_dimension)
-        print("Embedding Provider:", embedding_provider)
-        print("Embedding Model:", embedding_model)
-        print("Embedding Index Version:", embedding_index_version)
-        print("Actual Embedding Length:", len(embeddings[0]))
-        print("=" * 80)
         try:
             from psycopg import sql
 
             with self._supabase_connect() as conn:
                 with conn.cursor() as cur:
-                    print("=" * 80)
-                    print("UPSERT DEBUG")
-                    print("Embedding provider :", embedding_provider)
-                    print("Embedding model    :", embedding_model)
-                    print("Embedding index    :", embedding_index_version)
-                    print("Configured dim     :", self.settings.embedding_dimension)
-                    print("=" * 80)
                     cur.execute(
                         sql.SQL("delete from {} where document_id = %s and workspace_id = %s").format(table),
                         (chunks[0].document_id, workspace_id),

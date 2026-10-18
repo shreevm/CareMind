@@ -36,7 +36,8 @@ OUTPUT_LEAK = re.compile(
     r"<\s*/?\s*system\s*>|"
     r"\bBEGIN[ _-]?SYSTEM\b|\bEND[ _-]?SYSTEM\b|"
     r"\b(?:NVIDIA_API_KEY|SUPABASE_SECRET_KEY|SUPABASE_SERVICE_ROLE_KEY|LANGCHAIN_API_KEY|"
-    r"MEDICAL_LLM_API_KEY|CAREMIND_PASSWORD)\s*=\s*\S+|"
+    r"MEDICAL_LLM_API_KEY|CAREMIND_RADIOLOGY_VISION_API_KEY|HF_TOKEN|HUGGING_FACE_HUB_TOKEN|"
+    r"CAREMIND_PASSWORD)\s*=\s*\S+|"
     r"\bBearer\s+[A-Za-z0-9._~+/-]{20,}|"
     r"\b(?:sk|nvapi)-[A-Za-z0-9_-]{20,}"
     r")",

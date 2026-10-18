@@ -1,0 +1,35 @@
+# Disposable public recruiter demo. No paid services or persistent disks.
+services:
+  - type: web
+    name: caremind-demo-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile.demo
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: CAREMIND_ENV
+        value: demo
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: CAREMIND_VECTOR_BACKEND
+        value: sqlite
+      - key: CAREMIND_EMBEDDING_PROVIDER
+        value: nvidia
+      - key: CAREMIND_EMBEDDING_MODEL
+        value: nvidia/nv-embedqa-e5-v5
+      - key: CAREMIND_EMBEDDING_INDEX_VERSION
+        value: nvidia-demo-v1
+      - key: CAREMIND_LOCAL_EMBEDDING_FALLBACK_ENABLED
+        value: "false"
+      - key: CAREMIND_RESPONSE_CACHE_ENABLED
+        value: "false"
+      - key: CAREMIND_SEMANTIC_CACHE_ENABLED
+        value: "false"
+      - key: CAREMIND_MAX_UPLOAD_BYTES
+        value: "5242880"
+      - key: CAREMIND_CAPTURE_PRINTS
+        value: "false"
+      - key: LANGSMITH_TRACING
+        value: "false"

@@ -227,18 +227,48 @@ class ClinicalTextStructurer:
             f"Document type: {payload.get('document_type', 'unknown')}.",
         ]
         if payload.get("patient"):
-            sections.append(f"Patient: {json.dumps(payload['patient'], ensure_ascii=False)}.")
+            sections.extend(self._plain_structured_lines("Patient", payload["patient"]))
         if payload.get("measurements"):
-            sections.append(f"Measurements: {json.dumps(payload['measurements'], ensure_ascii=False)}.")
+            sections.extend(self._plain_structured_lines("Measurement", payload["measurements"]))
         if payload.get("findings"):
-            sections.append(f"Findings: {json.dumps(payload['findings'], ensure_ascii=False)}.")
+            sections.extend(self._plain_structured_lines("Finding", payload["findings"]))
         if payload.get("impression"):
             sections.append(f"Impression: {payload['impression']}.")
         if payload.get("quality_notes"):
             sections.append(f"OCR quality notes: {'; '.join(payload['quality_notes'])}.")
-        if payload.get("raw_text"):
+        has_structured_content = any(payload.get(key) for key in ("patient", "measurements", "findings", "impression"))
+        if payload.get("raw_text") and not has_structured_content:
             sections.append(f"Raw OCR text:\n{payload['raw_text']}")
         return "\n\n".join(sections).strip()
+
+    def _plain_structured_lines(self, label: str, value: Any) -> list[str]:
+        """Render extracted fields as readable evidence without JSON or inference."""
+        lines: list[str] = []
+        items = value if isinstance(value, list) else [value]
+        for item in items:
+            if isinstance(item, dict):
+                parts = []
+                for key, raw in item.items():
+                    if raw in (None, "", [], {}):
+                        continue
+                    rendered = self._plain_value(raw)
+                    parts.append(f"{str(key).replace('_', ' ')}: {rendered}")
+                if parts:
+                    lines.append(f"{label}: {'; '.join(parts)}.")
+            elif str(item).strip():
+                lines.append(f"{label}: {str(item).strip()}.")
+        return lines
+
+    def _plain_value(self, value: Any) -> str:
+        if isinstance(value, dict):
+            return "; ".join(
+                f"{str(key).replace('_', ' ')}={self._plain_value(item)}"
+                for key, item in value.items()
+                if item not in (None, "", [], {})
+            )
+        if isinstance(value, list):
+            return ", ".join(self._plain_value(item) for item in value)
+        return str(value)
 
     def _structure_with_model(self, *, text: str, filename: str, modality: str, llm: Any | None) -> dict[str, Any] | None:
         if not self.settings.image_ocr_structuring_enabled or llm is None:

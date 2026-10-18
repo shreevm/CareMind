@@ -5,6 +5,7 @@ import hashlib
 from typing import Any
 
 from ..llm import LLMClient
+from ..citation_validation import assess_evidence_sufficiency
 from ..memory import ConversationMemory
 from ..metrics import metrics
 from ..schemas import ChatRequest, RetrievedChunk
@@ -36,14 +37,48 @@ class DocumentRAGAgent:
             return updates
         chunks = updates.pop("chunks")
         history = updates.pop("history")
+        evidence_sufficiency = assess_evidence_sufficiency(request.message, chunks)
+        updates["evidence_sufficiency"] = evidence_sufficiency
+        updates["evidence_chunks"] = chunks
+        existing_steps = list(updates.get("trace_steps", []))
+        if existing_steps:
+            existing_steps[-1] = {
+                **existing_steps[-1],
+                "evidence_sufficiency": evidence_sufficiency,
+            }
+        updates["trace_steps"] = existing_steps
+        if (
+            self.tools.embeddings.settings.evidence_sufficiency_enabled is True
+            and self.tools.embeddings.settings.evidence_sufficiency_enforcement is True
+            and evidence_sufficiency["decision"] == "insufficient"
+        ):
+            return {
+                **updates,
+                "answer": NO_RELEVANT_DOCUMENT_EVIDENCE_ANSWER,
+                "citations": [],
+                "evidence_chunks": [],
+                "no_relevant_document_evidence": True,
+            }
+        answer = self.llm.answer(
+            question=request.message,
+            chunks=chunks,
+            history=history,
+            response_language=request.response_language,
+        )
+        raw_generation = getattr(self.llm, "last_generation_metadata", {})
+        generation = dict(raw_generation) if isinstance(raw_generation, dict) else {}
+        generation_step = {
+            "answer_source": "fallback" if generation.get("fallback_selected") else "model",
+            **generation,
+        }
+        traced_steps = list(updates.get("trace_steps", []))
+        if traced_steps:
+            traced_steps[-1] = {**traced_steps[-1], **generation_step}
         return {
             **updates,
-            "answer": self.llm.answer(
-                question=request.message,
-                chunks=chunks,
-                history=history,
-                response_language=request.response_language,
-            ),
+            "answer": answer,
+            "generation_metadata": generation,
+            "trace_steps": traced_steps,
         }
 
     def prepare(self, request: ChatRequest, tool_calls: list[str], trace_steps: list[dict]) -> dict[str, Any]:

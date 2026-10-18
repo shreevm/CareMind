@@ -32,9 +32,34 @@ def make_agent(tmp_path: Path) -> CareMindAgent:
     agent.memory = memory
     agent.safety = SafetyLayer()
     agent.supervisor_agent = SupervisorAgent()
+    agent.llm = Mock()
+
+    def route_conversation(payload: dict) -> dict:
+        message = payload["latest_message"]
+        lowered = message.lower()
+        route = "compare" if any(term in lowered for term in ("compare", "worse", "last time")) else "retrieve"
+        active_patient = payload["context"].get("active_patient")
+        resolved = message
+        if active_patient and route == "retrieve":
+            resolved = f"According to the uploaded report for {active_patient}, {message}"
+        if route == "compare":
+            resolved = f"Compare the active report with the previous report: {message}"
+        return {
+            "route": route,
+            "scope": "documents",
+            "resolved_query": resolved,
+            "topic": "kidney markers" if "kidney markers" in lowered else "",
+            "confidence": 0.95,
+            "clarification": "",
+        }
+
+    agent.llm.route_conversation.side_effect = route_conversation
     agent.tools = Mock()
     agent.tools.store.list_documents.return_value = [
-        SimpleNamespace(filename="Report_-_Mr._Venkat_Ramanujam_Sankar_Ram_553217_.pdf")
+        SimpleNamespace(
+            document_id="doc-current",
+            filename="Report_-_Mr._Venkat_Ramanujam_Sankar_Ram_553217_.pdf",
+        )
     ]
     agent.tools.store.list_images.return_value = []
     agent.tools.store.workspace_revision.return_value = "1"
@@ -134,9 +159,9 @@ def test_recap_style_intent_rewrite_routes_vague_comparison_followup(tmp_path: P
     assert route == "compare"
     assert intent_rewrite["route_hint"] == "compare"
     assert intent_rewrite["confidence"] >= 0.8
-    assert "kidney markers" in intent_rewrite["constraints"]
-    assert "Compare the current clinical report" in plan["current_intent"]
-    assert plan["route_source"] == "intent_rewrite"
+    assert "kidney markers" in intent_rewrite["resolved_query"]
+    assert "Compare the active report" in plan["current_intent"]
+    assert plan["route_source"] == "structured_model"
 
 
 def test_contextual_chest_pain_question_does_not_trigger_emergency_redirect(tmp_path: Path) -> None:
