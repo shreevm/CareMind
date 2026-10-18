@@ -13,6 +13,8 @@ services:
         value: demo
       - key: NVIDIA_API_KEY
         sync: false
+      - key: NVIDIA_CHAT_MODEL
+        value: nvidia/nemotron-3-super-120b-a12b
       - key: CAREMIND_VECTOR_BACKEND
         value: sqlite
       - key: CAREMIND_EMBEDDING_PROVIDER
