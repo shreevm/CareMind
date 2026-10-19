@@ -3,20 +3,18 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
+import secrets
 import time
 import uuid
 from typing import Annotated
 
-from contextlib import asynccontextmanager
-
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials, HTTPBearer
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.caremind.agent import CareMindAgent
-from backend.caremind.auth import AuthError, Principal, authenticate, validate_auth_config
 from backend.caremind.config import Settings, get_settings
 from backend.caremind.embeddings import EmbeddingClient, EmbeddingServiceUnavailable
 from backend.caremind.ingestion import DocumentIngestionService
@@ -36,11 +34,22 @@ from backend.caremind.vectorstore import VectorStore, VectorStoreUnavailable
 logger = logging.getLogger(__name__)
 
 security = HTTPBasic(auto_error=False)
-bearer_security = HTTPBearer(auto_error=False)
-
 
 class Services:
     def __init__(self, settings: Settings):
+        print("\n" + "="*80)
+        print("[INIT] CareMind Services Initialization")
+        print("="*80)
+        print(f"[INIT] App: {settings.app_name} v{settings.app_version}")
+        print(f"[INIT] Environment: {settings.environment}")
+        print(f"[INIT] Database: {settings.sqlite_path}")
+        print(f"[INIT] Vector Backend: {settings.vector_backend}")
+        print(f"[INIT] Embedding Provider: {settings.embedding_provider}")
+        print(f"[INIT] Embedding Dimension: {settings.embedding_dimension}")
+        print(f"[INIT] LLM Provider: NVIDIA" if settings.nvidia_api_key else "[INIT] LLM Provider: Local")
+        print(f"[INIT] Medical LLM Provider: {settings.medical_llm_provider}")
+        print(f"[INIT] Cache Enabled: Redis={settings.response_cache_enabled}")
+        print("="*80 + "\n")
         logger.info(
             "services.init app=%s version=%s environment=%s vector_backend=%s embedding_provider=%s llm_provider=%s log_path=%s",
             settings.app_name,
@@ -74,6 +83,7 @@ class Services:
             memory=self.memory,
             safety=SafetyLayer(),
         )
+        print(f"[INIT] ✓ All services initialized successfully\n")
 
 
 @lru_cache(maxsize=1)
@@ -82,47 +92,28 @@ def get_services() -> Services:
 
 
 def require_auth(
-    request: Request,
     credentials: Annotated[HTTPBasicCredentials | None, Depends(security)],
-    bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_security)],
     settings: Annotated[Settings, Depends(get_settings)],
-) -> Principal:
-    try:
-        principal = authenticate(
-            settings,
-            bearer=bearer.credentials if bearer else None,
-            basic=(credentials.username, credentials.password) if credentials else None,
-        )
-    except AuthError as exc:
-        raise_auth_error(str(exc))
-    request.state.principal = principal
-    return principal
-
-
-def current_workspace(principal: Annotated[Principal, Depends(require_auth)]) -> str:
-    """Workspace derived from the authenticated user; client-supplied values are ignored."""
-    return principal.workspace_id
-
-
-WorkspaceDep = Annotated[str, Depends(current_workspace)]
+) -> None:
+    if not settings.basic_auth_username and not settings.basic_auth_password:
+        return
+    if credentials is None:
+        raise_auth_error("Authentication required")
+    username_ok = secrets.compare_digest(credentials.username, settings.basic_auth_username or "")
+    password_ok = secrets.compare_digest(credentials.password, settings.basic_auth_password or "")
+    if not (username_ok and password_ok):
+        raise_auth_error("Invalid credentials")
 
 
 def raise_auth_error(detail: str) -> None:
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail=detail,
-        headers={"WWW-Authenticate": 'Bearer, Basic realm="CareMind"'},
+        headers={"WWW-Authenticate": 'Basic realm="CareMind"'},
     )
 
 
-@asynccontextmanager
-async def lifespan(_: FastAPI):
-    validate_auth_config(get_settings())
-    yield
-
-
 app = FastAPI(
-    lifespan=lifespan,
     title="CareMind API",
     version=get_settings().app_version,
     description="Agentic RAG assistant for medical and research documents.",
@@ -131,7 +122,13 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origin.strip() for origin in get_settings().cors_origins.split(",") if origin.strip()],
+    allow_origins=[
+        "https://shreevm.github.io",
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+        "http://127.0.0.1:3001",
+        "http://localhost:3001",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -353,7 +350,7 @@ def get_metrics_json() -> dict:
 @app.get("/cache/debug")
 def cache_debug(
     services: Annotated[Services, Depends(get_services)],
-    workspace_id: WorkspaceDep,
+    workspace_id: str = "default",
     session_id: str | None = None,
 ) -> dict:
     return services.memory.cache_debug_summary(workspace_id, session_id)
@@ -363,7 +360,7 @@ def cache_debug(
 async def upload_document(
     services: Annotated[Services, Depends(get_services)],
     file: Annotated[UploadFile, File(...)],
-    workspace_id: WorkspaceDep,
+    workspace_id: Annotated[str, Form()] = "default",
     session_id: Annotated[str, Form()] = "default",
     modality: Annotated[str, Form()] = "clinical_image",
     report_text: Annotated[str, Form()] = "",
@@ -418,7 +415,7 @@ async def upload_document(
 async def transcribe_speech(
     services: Annotated[Services, Depends(get_services)],
     file: Annotated[UploadFile, File(...)],
-    workspace_id: WorkspaceDep,
+    workspace_id: Annotated[str, Form()] = "default",
     session_id: Annotated[str, Form()] = "default",
     started_at: Annotated[str | None, Form()] = None,
     ended_at: Annotated[str | None, Form()] = None,
@@ -577,8 +574,9 @@ def _merge_upload_entities(
 @app.get("/images")
 def list_images(
     services: Annotated[Services, Depends(get_services)],
-    workspace_id: WorkspaceDep,
+    workspace_id: str = "default",
 ):
+    print(f"[ROUTER] /images endpoint - Listing images from workspace: {workspace_id}")
     logger.info("api.list_images.start router=/images workspace_id=%s", workspace_id)
     images = services.store.list_images(workspace_id)
     logger.info("api.list_images.done router=/images workspace_id=%s count=%s", workspace_id, len(images))
@@ -589,7 +587,7 @@ def list_images(
 def delete_image(
     image_id: str,
     services: Annotated[Services, Depends(get_services)],
-    workspace_id: WorkspaceDep,
+    workspace_id: str = "default",
 ) -> dict:
     images = services.store.list_images(workspace_id)
     image = next((item for item in images if item.image_id == image_id), None)
@@ -612,8 +610,9 @@ def delete_image(
 @app.get("/documents")
 def list_documents(
     services: Annotated[Services, Depends(get_services)],
-    workspace_id: WorkspaceDep,
+    workspace_id: str = "default",
 ):
+    print(f"[ROUTER] /documents endpoint - Listing documents from workspace: {workspace_id}")
     logger.info("api.list_documents.start router=/documents workspace_id=%s", workspace_id)
     documents = services.store.list_documents(workspace_id)
     logger.info("api.list_documents.done router=/documents workspace_id=%s count=%s", workspace_id, len(documents))
@@ -624,7 +623,7 @@ def list_documents(
 def delete_document(
     document_id: str,
     services: Annotated[Services, Depends(get_services)],
-    workspace_id: WorkspaceDep,
+    workspace_id: str = "default",
 ) -> dict:
     document = services.store.get_document(document_id)
     if document is None or document.workspace_id != workspace_id:
@@ -642,12 +641,14 @@ def delete_document(
 @app.delete("/cache")
 def clear_cache(
     services: Annotated[Services, Depends(get_services)],
-    workspace_id: WorkspaceDep,
+    workspace_id: str = "default",
     session_id: str | None = None,
 ) -> dict:
+    print(f"[ROUTER] /cache endpoint (DELETE) - Clearing workspace: {workspace_id}, Session: {session_id}")
     logger.info("api.clear_cache.start router=/cache workspace_id=%s session_id=%s", workspace_id, session_id)
     deleted = services.memory.cache_clear_workspace(workspace_id)
     session_deleted = services.memory.session_clear(session_id, workspace_id) if session_id else 0
+    print(f"[ROUTER] /cache cleared {deleted} workspace items and {session_deleted} session items")
     logger.info("api.clear_cache.done router=/cache deleted=%s session_deleted=%s", deleted, session_deleted)
     return {
         "workspace_id": workspace_id,
@@ -658,19 +659,17 @@ def clear_cache(
     }
 
 
-@app.delete("/cache/{requested_workspace_id}")
+@app.delete("/cache/{workspace_id}")
 def clear_workspace_cache(
-    requested_workspace_id: str,
-    own_workspace_id: WorkspaceDep,
+    workspace_id: str,
     services: Annotated[Services, Depends(get_services)],
     session_id: str | None = None,
 ) -> dict:
-    if requested_workspace_id != own_workspace_id and requested_workspace_id != "default":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Workspace is not available to this user.")
-    workspace_id = own_workspace_id
+    print(f"[ROUTER] /cache/{{workspace_id}} endpoint (DELETE) - Clearing workspace: {workspace_id}")
     logger.info("api.clear_workspace_cache.start router=/cache/{workspace_id} workspace_id=%s session_id=%s", workspace_id, session_id)
     deleted = services.memory.cache_clear_workspace(workspace_id)
     session_deleted = services.memory.session_clear(session_id, workspace_id) if session_id else 0
+    print(f"[ROUTER] /cache/{workspace_id} cleared {deleted} workspace items")
     logger.info("api.clear_workspace_cache.done router=/cache/{workspace_id} deleted=%s session_deleted=%s", deleted, session_deleted)
     return {
         "workspace_id": workspace_id,
@@ -685,9 +684,8 @@ def clear_workspace_cache(
 def chat(
     request: ChatRequest,
     services: Annotated[Services, Depends(get_services)],
-    workspace_id: WorkspaceDep,
 ) -> ChatResponse:
-    request = request.model_copy(update={"workspace_id": workspace_id})
+    print(f"[ROUTER] /chat endpoint - Session: {request.session_id}, Workspace: {request.workspace_id}, Query: {request.message[:100]}")
     attachment_ids = _authorized_attachment_ids(request, services)
     request = request.model_copy(update={"attachment_ids": attachment_ids})
     logger.info(
@@ -706,9 +704,8 @@ def chat(
 def chat_stream(
     request: ChatRequest,
     services: Annotated[Services, Depends(get_services)],
-    workspace_id: WorkspaceDep,
 ) -> StreamingResponse:
-    request = request.model_copy(update={"workspace_id": workspace_id})
+    print(f"[ROUTER] /chat/stream endpoint - Session: {request.session_id}, Workspace: {request.workspace_id}, Query: {request.message[:100]}")
     attachment_ids = _authorized_attachment_ids(request, services)
     request = request.model_copy(update={"attachment_ids": attachment_ids})
     logger.info(
@@ -752,9 +749,8 @@ def chat_stream(
 def chat_inspect(
     request: ChatRequest,
     services: Annotated[Services, Depends(get_services)],
-    workspace_id: WorkspaceDep,
 ) -> dict:
-    request = request.model_copy(update={"workspace_id": workspace_id})
+    print(f"[ROUTER] /chat/inspect endpoint (DEBUG) - Session: {request.session_id}, Workspace: {request.workspace_id}")
     logger.info("api.chat_inspect.start router=/chat/inspect session_id=%s workspace_id=%s debug=true", request.session_id, request.workspace_id)
     attachment_ids = _authorized_attachment_ids(request, services)
     request = request.model_copy(update={"debug": True, "bypass_cache": True, "attachment_ids": attachment_ids})
@@ -774,7 +770,7 @@ def chat_inspect(
 def delete_chat_session(
     session_id: str,
     services: Annotated[Services, Depends(get_services)],
-    workspace_id: WorkspaceDep,
+    workspace_id: str = "default",
 ) -> dict:
     result = services.memory.session_delete(session_id, workspace_id)
     logger.info("api.delete_chat_session.done session_id=%s workspace_id=%s result=%s", session_id, workspace_id, result)
@@ -785,12 +781,14 @@ def delete_chat_session(
 def search(
     query: str,
     services: Annotated[Services, Depends(get_services)],
-    workspace_id: WorkspaceDep,
+    workspace_id: str = "default",
     top_k: int = 5,
 ) -> SearchResponse:
+    print(f"[ROUTER] /search endpoint - Query: {query[:100]}, Workspace: {workspace_id}, Top-K: {top_k}")
     logger.info("api.search.start router=/search query=%r workspace_id=%s top_k=%s", query, workspace_id, top_k)
     results = services.tools.document_search(query, workspace_id=workspace_id, top_k=top_k)
     logger.info("api.search.done router=/search results_count=%s", len(results))
+    print(f"[ROUTER] /search returned {len(results)} results")
     return SearchResponse(query=query, results=results)
 
 
@@ -798,9 +796,8 @@ def search(
 def compare(
     request: CompareRequest,
     services: Annotated[Services, Depends(get_services)],
-    workspace_id: WorkspaceDep,
 ) -> CompareResponse:
-    request = request.model_copy(update={"workspace_id": workspace_id})
+    print(f"[ROUTER] /compare endpoint - Documents: {request.document_ids}, Workspace: {request.workspace_id}")
     logger.info("api.compare.start router=/compare workspace_id=%s document_ids=%s", request.workspace_id, request.document_ids)
     result = services.tools.compare_reports(request.document_ids, workspace_id=request.workspace_id)
     logger.info("api.compare.done router=/compare status=ok")
@@ -810,8 +807,9 @@ def compare(
 @app.post("/demo/seed")
 def seed_demo(
     services: Annotated[Services, Depends(get_services)],
-    workspace_id: WorkspaceDep,
+    workspace_id: str = "default",
 ):
+    print(f"[ROUTER] /demo/seed endpoint - Workspace: {workspace_id}")
     logger.info("api.demo_seed.start router=/demo/seed workspace_id=%s", workspace_id)
     first = services.ingestion.ingest_text(
         filename="synthetic-lab-report-baseline.txt",
@@ -832,6 +830,7 @@ def seed_demo(
         workspace_id=workspace_id,
     )
     services.memory.cache_clear_workspace(workspace_id)
+    print(f"[ROUTER] /demo/seed created 2 synthetic documents successfully")
     logger.info("api.demo_seed.done router=/demo/seed workspace_id=%s status=ok documents_created=2", workspace_id)
     return {"documents": [first, second]}
 
