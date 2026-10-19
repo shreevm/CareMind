@@ -337,6 +337,7 @@ input[type="file"]:not(.hidden-file-input) {
 
 .mode-switch {
   display: grid;
+  grid-column: 2;
   grid-template-columns: repeat(2, minmax(86px, 1fr));
   gap: 4px;
   border: 1px solid var(--line);
@@ -847,6 +848,7 @@ input[type="file"]:not(.hidden-file-input) {
   }
 
   .mode-switch {
+    grid-column: 1;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

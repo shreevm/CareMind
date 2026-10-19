@@ -942,15 +942,6 @@ function CareMindApp() {
 
       <section className="chat">
         <div className="chat-header">
-          <div className="disclaimer-banner" role="note">
-            CareMind is for medical education and document interpretation only. It is not a diagnosis or treatment plan.
-          </div>
-          {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && (
-            <div className="disclaimer-banner" role="note">
-              Public demo: use synthetic reports only. Reports are shared and may reset.
-              The first request can take about a minute while the server wakes up.
-            </div>
-          )}
           <div className="mode-switch" aria-label="Chat mode">
             <button
               type="button"
