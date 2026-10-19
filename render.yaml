@@ -1,5 +1,11 @@
 # Disposable public recruiter demo. No paid services or persistent disks.
 services:
+  - type: keyvalue
+    name: caremind-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
   - type: web
     name: caremind-demo-api
     runtime: docker
@@ -13,6 +19,11 @@ services:
         value: demo
       - key: NVIDIA_API_KEY
         sync: false
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: caremind-redis
+          property: connectionString
       - key: NVIDIA_CHAT_MODEL
         value: nvidia/nemotron-3-super-120b-a12b
       - key: CAREMIND_VECTOR_BACKEND
