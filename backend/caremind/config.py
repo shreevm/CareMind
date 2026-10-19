@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     nvidia_reasoning_budget: int | None = Field(default=2048, alias="NVIDIA_REASONING_BUDGET")
     nvidia_enable_thinking: bool | None = Field(default=None, alias="NVIDIA_ENABLE_THINKING")
     nvidia_embedding_model: str = Field(default="nvidia/nv-embedqa-e5-v5", alias="NVIDIA_EMBEDDING_MODEL")
+    nvidia_embedding_dimensions: int | None = Field(default=None, alias="NVIDIA_EMBEDDING_DIMENSIONS")
     nvidia_query_input_type: str = Field(default="query", alias="NVIDIA_QUERY_INPUT_TYPE")
     nvidia_document_input_type: str = Field(default="passage", alias="NVIDIA_DOCUMENT_INPUT_TYPE")
     embedding_provider: str = Field(default="qwen", alias="CAREMIND_EMBEDDING_PROVIDER")

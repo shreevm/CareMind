@@ -34,10 +34,14 @@ services:
         sync: false
       - key: CAREMIND_EMBEDDING_PROVIDER
         value: nvidia
+      - key: NVIDIA_EMBEDDING_MODEL
+        value: nvidia/llama-nemotron-embed-vl-1b-v2
+      - key: NVIDIA_EMBEDDING_DIMENSIONS
+        value: "1024"
       - key: CAREMIND_EMBEDDING_MODEL
-        value: nvidia/nv-embedqa-e5-v5
+        value: nvidia/llama-nemotron-embed-vl-1b-v2
       - key: CAREMIND_EMBEDDING_INDEX_VERSION
-        value: nvidia-demo-v1
+        value: nvidia-demo-v2
       - key: CAREMIND_LOCAL_EMBEDDING_FALLBACK_ENABLED
         value: "false"
       - key: CAREMIND_RESPONSE_CACHE_ENABLED
@@ -45,7 +49,7 @@ services:
       - key: CAREMIND_SEMANTIC_CACHE_ENABLED
         value: "false"
       - key: CAREMIND_MAX_UPLOAD_BYTES
-        value: "5242880"
+        value: "10485760"
       - key: CAREMIND_CAPTURE_PRINTS
         value: "false"
       - key: LANGSMITH_TRACING

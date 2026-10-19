@@ -141,6 +141,8 @@ class EmbeddingClient:
         payload = {"input": texts, "model": self.settings.nvidia_embedding_model}
         if input_type:
             payload["input_type"] = input_type
+        if self.settings.nvidia_embedding_dimensions:
+            payload["dimensions"] = self.settings.nvidia_embedding_dimensions
         headers = {
             "Authorization": f"Bearer {self.settings.nvidia_api_key}",
             "Content-Type": "application/json",
