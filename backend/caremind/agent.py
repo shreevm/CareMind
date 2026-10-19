@@ -24,6 +24,15 @@ from .clinical_formatting import clinical_summary_answer
 from .memory import ConversationMemory
 from .metrics import metrics
 from .observability import chat_request_inputs, chat_response_outputs, trace_block
+from .profile import (
+    PERSONALIZED_ROUTES,
+    extract_name,
+    is_greeting,
+    is_skip,
+    lead_in,
+    sanitize_name,
+    should_use_name,
+)
 from .intent import asks_general_medical_not_document, explicitly_general_topic
 from .safety import SafetyLayer
 from .schemas import ChatRequest, ChatResponse, Citation, RetrievedChunk
@@ -143,13 +152,86 @@ class CareMindAgent:
             if preflight is not None:
                 run.end(chat_response_outputs(self.llm.settings, preflight))
                 return preflight
+            profile_response = self._profile_response(request)
+            if profile_response is not None:
+                run.end(chat_response_outputs(self.llm.settings, profile_response))
+                return profile_response
             state = self.graph.invoke(
                 {"request": request, "started_at": time.perf_counter()},
                 config=self._run_config(request),
             )
-            response = state["response"]
+            response = self._personalize_response(request, state["response"])
             run.end(chat_response_outputs(self.llm.settings, response))
             return response
+
+    def _known_user_name(self, request: ChatRequest, context: dict[str, Any]) -> str | None:
+        return sanitize_name(request.user_name) or sanitize_name(context.get("user_name"))
+
+    def _assistant_reply_count(self, request: ChatRequest) -> int:
+        history = self.memory.load(request.session_id, request.workspace_id, limit=40)
+        return sum(1 for item in history if item.role == "assistant")
+
+    def _profile_response(self, request: ChatRequest) -> ChatResponse | None:
+        """Ask for the user's name on the first greeting, then greet by name."""
+        context = self.memory.context_get(request.session_id, request.workspace_id)
+        name = self._known_user_name(request, context)
+        reply_count = self._assistant_reply_count(request)
+        updated = dict(context)
+        answer = ""
+        if context.get("awaiting_name"):
+            updated.pop("awaiting_name", None)
+            if is_skip(request.message):
+                answer = "No problem! How can I help you today?"
+            else:
+                given = extract_name(request.message)
+                if given is None:
+                    # Not a name (for example a real question): stop asking and answer normally.
+                    self.memory.context_set(request.session_id, request.workspace_id, updated)
+                    return None
+                name = given
+                updated["user_name"] = name
+                updated["name_used_at"] = reply_count + 1
+                answer = f"Nice to meet you, {name}! How can I help you today?"
+        elif is_greeting(request.message):
+            if name:
+                updated["user_name"] = name
+                updated["name_used_at"] = reply_count + 1
+                answer = f"Hi {name}! How can I help you today?"
+            else:
+                updated["awaiting_name"] = True
+                answer = "Hi, I'm CareMind. What should I call you?"
+        else:
+            return None
+        self.memory.context_set(request.session_id, request.workspace_id, updated)
+        answer, notes = self.safety.finalize(answer, False, [], require_citations=False)
+        self.memory.append(request.session_id, request.workspace_id, "user", request.message)
+        self.memory.append(request.session_id, request.workspace_id, "assistant", answer)
+        metrics.record_agent("direct", [], 0, cache_hit=False)
+        return ChatResponse(
+            session_id=request.session_id,
+            route="direct",
+            answer=answer,
+            safety_notes=notes,
+            trace={"session_id": request.session_id, "workspace_id": request.workspace_id, "route": "direct"},
+            user_name=name,
+        )
+
+    def _personalize_response(self, request: ChatRequest, response: ChatResponse) -> ChatResponse:
+        """Occasionally open a normal answer with the user's name; never touches validated text."""
+        context = self.memory.context_get(request.session_id, request.workspace_id)
+        name = self._known_user_name(request, context)
+        if not name:
+            return response
+        response = response.model_copy(update={"user_name": name})
+        if response.route not in PERSONALIZED_ROUTES:
+            return response
+        reply_count = self._assistant_reply_count(request)
+        if not should_use_name(reply_count, context.get("name_used_at")):
+            return response
+        self.memory.context_set(
+            request.session_id, request.workspace_id, {**context, "user_name": name, "name_used_at": reply_count}
+        )
+        return response.model_copy(update={"answer": f"{lead_in(name, reply_count)}\n\n{response.answer}"})
 
     def stream_events(self, request: ChatRequest) -> Iterator[dict[str, Any]]:
         started_at = time.perf_counter()

@@ -105,6 +105,7 @@ class ChatRequest(BaseModel):
     response_mode: Literal["patient", "agent"] = "agent"
     debug: bool = False
     bypass_cache: bool = False
+    user_name: str | None = Field(default=None, max_length=60)
 
 
 class ChatResponse(BaseModel):
@@ -115,6 +116,7 @@ class ChatResponse(BaseModel):
     safety_notes: list[str] = Field(default_factory=list)
     tool_calls: list[str] = Field(default_factory=list)
     trace: dict = Field(default_factory=dict)
+    user_name: str | None = None
 
 
 class CompareRequest(BaseModel):

@@ -7,6 +7,15 @@ import { readyMessageAttachments, consumeMessageAttachments } from "./composer-a
 
 const CHAT_HISTORY_KEY = "caremind-chat-history";
 const CHAT_MODE_KEY = "caremind-chat-mode";
+const USER_NAME_KEY = "caremind-user-name";
+
+function readStoredUserName() {
+  try {
+    return localStorage.getItem(USER_NAME_KEY) || undefined;
+  } catch {
+    return undefined;
+  }
+}
 const WELCOME_MESSAGE =
   "Upload a synthetic medical report or seed the demo, then ask what changed, what the key findings are, or which evidence supports a statement.";
 
@@ -682,6 +691,7 @@ function CareMindApp() {
           response_mode: chatMode,
           debug: chatMode === "agent",
           bypass_cache: chatMode === "agent",
+          user_name: readStoredUserName(),
         },
         {
           onDelta: (text) => {
@@ -715,6 +725,11 @@ function CareMindApp() {
         },
       );
       if (!data) throw new Error("Streaming ended before a final response was received.");
+      if (data.user_name) {
+        try {
+          localStorage.setItem(USER_NAME_KEY, data.user_name);
+        } catch {}
+      }
       const visibleData = chatMode === "agent" ? data : sanitizePatientData(data);
       const answered = nextMessages.map((item) =>
         item.id === pendingId
