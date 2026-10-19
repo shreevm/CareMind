@@ -16,7 +16,11 @@ services:
       - key: NVIDIA_CHAT_MODEL
         value: nvidia/nemotron-3-super-120b-a12b
       - key: CAREMIND_VECTOR_BACKEND
-        value: sqlite
+        value: supabase
+      - key: SUPABASE_URL
+        value: https://chdwiolyokgkmhpoyjbr.supabase.co
+      - key: SUPABASE_SECRET_KEY
+        sync: false
       - key: CAREMIND_EMBEDDING_PROVIDER
         value: nvidia
       - key: CAREMIND_EMBEDDING_MODEL
